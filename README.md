@@ -1,11 +1,11 @@
-# KAIREN Form Generator v0.4.3 — Arizona + colores
+# KAIREN Form Generator v0.4.4 — Live Preview
 
-Cambios principales:
-- Arizona Autofill actualizado con el set de datos de prueba proporcionado.
-- DAQ Arizona: `N37872771`.
-- DAJ Arizona: `AZ`.
-- Physical Description ahora muestra puntos de color en DAY (Eye Color) y DAZ (Hair Color), similares a la referencia visual.
-- Se conserva la salida PDF417 interna de prueba `TEST_FORM_V2`; no se cambió a un payload oficial.
-- Colorado conserva el ajuste visual ancho/bajo del PDF417.
+Cambio principal:
+- El PDF417 del panel Preview se actualiza automáticamente al cambiar cualquier dato.
+- Usa debounce de 450 ms al escribir para no saturar la API.
+- Botones, selectores y autofill actualizan casi inmediatamente.
+- Si Strict está activo y falta un campo requerido, se oculta el código viejo hasta completar los requeridos.
+- Si Strict está desactivado, el preview puede actualizarse con datos parciales.
+- Se agregó indicador LIVE / UPDATING en el panel Preview.
 
-Sube estos archivos al mismo repositorio y Vercel hará el redeploy.
+Conserva Colorado, Arizona y el resto de perfiles de la v0.4.3.

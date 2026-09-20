@@ -65,6 +65,8 @@ let activeSection = 0;
 let values = {};
 let lastUrl = null;
 let lastBlob = null;
+let autoPreviewTimer = null;
+let previewRequestId = 0;
 
 function allFields(){ return SECTIONS.flatMap(s=>s.fields); }
 
@@ -101,6 +103,7 @@ function updateProfile(){
   values.DAJ=p.id;
   $("topProfile").textContent=`${p.id} · V${p.version}`;
   render();
+  scheduleAutoPreview(80);
 }
 
 function buildNav(){
@@ -147,7 +150,7 @@ function makeField(f){
       }else{
         b.textContent=(val?val+" ":"")+txt;
       }
-      b.onclick=()=>{values[f.code]=val;render()};
+      b.onclick=()=>{values[f.code]=val;render();scheduleAutoPreview(80)};
       q.appendChild(b);
     });
     wrap.appendChild(q);
@@ -158,12 +161,12 @@ function makeField(f){
     input.value=values[f.code]??f.default??"";
     if(f.readonly) input.readOnly=true;
     if(f.maxlength) input.maxLength=f.maxlength;
-    input.oninput=e=>{values[f.code]=e.target.value;updateAllStatus()};
+    input.oninput=e=>{values[f.code]=e.target.value;updateAllStatus();scheduleAutoPreview(450)};
     if(f.generate){
       const row=document.createElement("div");row.className="inline-suffix";
       row.appendChild(input);
       const g=document.createElement("button");g.type="button";g.textContent="Generate";
-      g.onclick=()=>{values[f.code]=generateField(f.code);render()};
+      g.onclick=()=>{values[f.code]=generateField(f.code);render();scheduleAutoPreview(80)};
       row.appendChild(g);wrap.appendChild(row);
     }else{
       wrap.appendChild(input);
@@ -266,6 +269,7 @@ function applyQuick(code,txt){
   else if(txt.startsWith("+")){const y=parseInt(txt);const d=new Date(now);d.setFullYear(now.getFullYear()+y);values[code]=fmt(d)}
   else values[code]=txt.split(" ")[0]==="NONE"?"NONE":txt.split(" ")[0];
   render();
+  scheduleAutoPreview(80);
 }
 
 function generateField(code){
@@ -284,6 +288,7 @@ function autoFields(){
   if(!values.DDG)values.DDG="N";
   if(!values.DCG)values.DCG="USA";
   render();
+  scheduleAutoPreview(80);
 }
 
 function autofill(){
@@ -317,6 +322,7 @@ function autofill(){
     };
   }
   render();
+  scheduleAutoPreview(80);
 }
 function nextRequired(){
   const missing=missingRequired();
@@ -359,15 +365,86 @@ function exportFilename(ext="png"){
   return `${name}.${ext}`;
 }
 
-async function generateBarcode(){
-  try{
+function setLiveState(state){
+  const badge=$("liveBadge");
+  if(!badge) return;
+  if(state==="loading"){
+    badge.textContent="● UPDATING";
+    badge.classList.add("loading");
+  }else{
+    badge.textContent="● LIVE";
+    badge.classList.remove("loading");
+  }
+}
+
+function clearBarcodePreview(){
+  previewRequestId++;
+  if(lastUrl){
+    try{ URL.revokeObjectURL(lastUrl); }catch(e){}
+  }
+  lastUrl=null;
+  lastBlob=null;
+  $("previewImage")?.classList.add("hidden");
+  $("previewEmpty")?.classList.remove("hidden");
+  if($("pngBtn")) $("pngBtn").disabled=true;
+  if($("copyImage")) $("copyImage").disabled=true;
+  setLiveState("idle");
+}
+
+function canAutoPreview(){
+  if(!$("strict")?.checked) return true;
+  return missingRequired().length===0;
+}
+
+function scheduleAutoPreview(delay=450){
+  if(autoPreviewTimer) clearTimeout(autoPreviewTimer);
+
+  // En modo estricto no dejamos visible un código viejo si falta un requerido.
+  if(!canAutoPreview()){
+    clearBarcodePreview();
+    return;
+  }
+
+  autoPreviewTimer=setTimeout(()=>{
+    refreshPreview(true);
+  },delay);
+}
+
+async function refreshPreview(silent=false){
+  if(!silent){
     validate();
-    $("generate").disabled=true;$("generate").textContent="Generando...";
-    const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(collect())});
+  }else if(!canAutoPreview()){
+    clearBarcodePreview();
+    return;
+  }
+
+  const requestId=++previewRequestId;
+  setLiveState("loading");
+
+  const generateBtn=$("generate");
+  if(!silent && generateBtn){
+    generateBtn.disabled=true;
+    generateBtn.textContent="Generando...";
+  }
+
+  try{
+    const r=await fetch("/api/generate",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(collect())
+    });
+
     if(!r.ok) throw new Error(await r.text());
-    lastBlob=await r.blob();
-    if(lastUrl)URL.revokeObjectURL(lastUrl);
-    lastUrl=URL.createObjectURL(lastBlob);
+    const blob=await r.blob();
+
+    // Si el usuario siguió escribiendo, ignoramos una respuesta vieja.
+    if(requestId!==previewRequestId) return;
+
+    if(lastUrl){
+      try{ URL.revokeObjectURL(lastUrl); }catch(e){}
+    }
+    lastBlob=blob;
+    lastUrl=URL.createObjectURL(blob);
     $("previewImage").src=lastUrl;
     $("previewImage").classList.remove("hidden");
     $("previewEmpty").classList.add("hidden");
@@ -376,8 +453,21 @@ async function generateBarcode(){
     $("decodedOutput").textContent=JSON.stringify(collect().fields,null,2);
     $("wireLedger").textContent=buildRawPayload();
     updateAllStatus();
-  }catch(e){alert(e.message)}
-  finally{$("generate").disabled=false;$("generate").textContent="Generar PDF417 de prueba"}
+  }catch(e){
+    if(requestId!==previewRequestId) return;
+    if(!silent) alert(e.message);
+    else console.error("Live preview:",e);
+  }finally{
+    if(requestId===previewRequestId) setLiveState("idle");
+    if(!silent && generateBtn){
+      generateBtn.disabled=false;
+      generateBtn.textContent="Generar PDF417 de prueba";
+    }
+  }
+}
+
+async function generateBarcode(){
+  return refreshPreview(false);
 }
 
 async function copyJson(){
@@ -395,12 +485,8 @@ function downloadPng(){
 
 function clearAll(){
   values={DAJ:$("profile").value};
-  if(lastUrl)URL.revokeObjectURL(lastUrl);
-  lastUrl=null;lastBlob=null;
-  $("previewImage").classList.add("hidden");
-  $("previewEmpty").classList.remove("hidden");
-  $("pngBtn").disabled=true;
-  $("copyImage").disabled=true;
+  if(autoPreviewTimer) clearTimeout(autoPreviewTimer);
+  clearBarcodePreview();
   render();
 }
 
@@ -410,9 +496,9 @@ function bind(id,event,handler){
 }
 
 bind("profile","onchange",updateProfile);
-bind("version","onchange",()=>{ $("topProfile").textContent=`${$("profile").value} · V${$("version").value}`; updateAllStatus(); });
-bind("subfile","onchange",updateAllStatus);
-bind("strict","onchange",updateAllStatus);
+bind("version","onchange",()=>{ $("topProfile").textContent=`${$("profile").value} · V${$("version").value}`; updateAllStatus(); scheduleAutoPreview(80); });
+bind("subfile","onchange",()=>{updateAllStatus();scheduleAutoPreview(80)});
+bind("strict","onchange",()=>{updateAllStatus();scheduleAutoPreview(80)});
 bind("nameInFilename","onchange",updateAllStatus);
 bind("search","oninput",applyFilters);
 bind("requiredOnly","onchange",applyFilters);
