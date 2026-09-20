@@ -1,9 +1,0 @@
-{
-  "name": "kairen-form-generator",
-  "version": "0.1.0",
-  "private": true,
-  "type": "commonjs",
-  "dependencies": {
-    "bwip-js": "^4.5.1"
-  }
-}
