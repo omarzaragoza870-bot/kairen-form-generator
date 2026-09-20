@@ -51,3 +51,5 @@ button,input,select,textarea{font:inherit}
 @media(max-width:1250px){.app{grid-template-columns:165px minmax(0,1fr) 270px}.field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar{flex-wrap:wrap}.search-wrap{flex-basis:100%}}
 @media(max-width:900px){.app{grid-template-columns:165px 1fr}.preview-sidebar{grid-column:1/-1;position:static;height:auto}.field-grid{grid-template-columns:1fr}}
 @media(max-width:680px){.app{grid-template-columns:1fr}.sidebar{position:static;height:auto}.content{padding:0}.record-bar{overflow:auto}.top-strip{position:sticky;top:0;z-index:20}}
+
+.generate-preview-btn{width:100%;height:40px;margin-top:9px;border:0;border-radius:9px;background:#3568d4;color:#fff;font-size:10px;font-weight:800;cursor:pointer}.generate-preview-btn:disabled{opacity:.55;cursor:not-allowed}

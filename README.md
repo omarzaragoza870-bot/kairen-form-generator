@@ -12,3 +12,7 @@ Cambios AZ observados en las capturas:
 - Strict Compliance queda desactivado por defecto para AZ, como en la captura.
 
 Colorado y los demás estados continúan disponibles.
+
+
+## v0.4.1
+Corrige un error de JavaScript que detenía la carga antes de poblar State / Territory, las secciones y los campos. También agrega el botón Generar PDF417 de prueba al panel Preview y hace los bindings tolerantes a controles opcionales.

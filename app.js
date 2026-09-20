@@ -383,24 +383,28 @@ function clearAll(){
   render();
 }
 
-$("profile").onchange=updateProfile;
-$("version").onchange=()=>{ $("topProfile").textContent=`${$("profile").value} · V${$("version").value}`; updateAllStatus(); };
-$("subfile").onchange=updateAllStatus;
-$("strict").onchange=updateAllStatus;
-$("nameInFilename").onchange=updateAllStatus;
-$("search").oninput=applyFilters;
-$("requiredOnly").onchange=applyFilters;
-$("nextRequired").onclick=nextRequired;
-$("fixRequired").onclick=nextRequired;
-$("autoFields").onclick=autoFields;
-$("autofill").onclick=autofill;
-$("generate").onclick=generateBarcode;
-$("pngBtn").onclick=downloadPng;
-$("copyJson").onclick=copyJson;
-$("copyData").onclick=copyJson;
-$("clearAll").onclick=clearAll;
-$("copyImage").onclick=()=>alert("La copia directa de imagen depende del navegador. Usa PNG para descargar.");
-window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("search").focus()}});
+function bind(id,event,handler){
+  const el=$(id);
+  if(el) el[event]=handler;
+}
+
+bind("profile","onchange",updateProfile);
+bind("version","onchange",()=>{ $("topProfile").textContent=`${$("profile").value} · V${$("version").value}`; updateAllStatus(); });
+bind("subfile","onchange",updateAllStatus);
+bind("strict","onchange",updateAllStatus);
+bind("nameInFilename","onchange",updateAllStatus);
+bind("search","oninput",applyFilters);
+bind("requiredOnly","onchange",applyFilters);
+bind("nextRequired","onclick",nextRequired);
+bind("fixRequired","onclick",nextRequired);
+bind("autoFields","onclick",autoFields);
+bind("autofill","onclick",autofill);
+bind("generate","onclick",generateBarcode);
+bind("pngBtn","onclick",downloadPng);
+bind("copyJson","onclick",copyJson);
+bind("clearAll","onclick",clearAll);
+bind("copyImage","onclick",()=>alert("La copia directa de imagen depende del navegador. Usa PNG para descargar."));
+window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("search")?.focus()}});
 
 initProfiles();
 render();
