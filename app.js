@@ -22,7 +22,7 @@ const SECTIONS = [
       {code:"DAG",name:"Address Street",type:"text",required:true},
       {code:"DAH",name:"Address Line 2",type:"text",required:false},
       {code:"DAI",name:"City",type:"text",required:true},
-      {code:"DAJ",name:"Jurisdiction Code",type:"text",required:true,default:"CO",readonly:true,helper:"Set from the selected jurisdiction."},
+      {code:"DAJ",name:"Jurisdiction Code",type:"text",required:true,default:"CO",maxlength:2,helper:"Auto-filled from State / Territory, but you can edit it manually."},
       {code:"DAK",name:"Postal Code",type:"text",required:true}
     ]
   },
@@ -68,6 +68,21 @@ let lastBlob = null;
 
 function allFields(){ return SECTIONS.flatMap(s=>s.fields); }
 
+
+function activeProfile(){ return profiles[$("profile").value] || profiles.CO; }
+
+function fieldForProfile(f){
+  const p = activeProfile();
+  if(p.id === "AZ" && f.code === "DCA"){
+    return Object.assign({}, f, {quick:["A CDL combo","B CDL heavy","D regular","M motorcycle","G regular","NONE"]});
+  }
+  return f;
+}
+
+function sectionForProfile(section){
+  return Object.assign({}, section, {fields: section.fields.map(fieldForProfile)});
+}
+
 function initProfiles(){
   Object.values(profiles).forEach(p=>{
     const o=document.createElement("option");
@@ -81,7 +96,8 @@ function updateProfile(){
   const p=profiles[$("profile").value];
   $("version").value=p.version;
   $("subfile").value=p.subfile;
-  $("stateNotice").textContent=p.ready ? "CO profile loaded. Colorado fields enabled." : p.note;
+  $("stateNotice").textContent=p.note || (p.ready ? `${p.name} profile loaded.` : "Perfil pendiente.");
+  if(typeof p.strictDefault === "boolean") $("strict").checked = p.strictDefault;
   values.DAJ=p.id;
   $("topProfile").textContent=`${p.id} · V${p.version}`;
   render();
@@ -89,7 +105,7 @@ function updateProfile(){
 
 function buildNav(){
   const nav=$("sectionNav"); nav.innerHTML="";
-  SECTIONS.forEach((s,i)=>{
+  SECTIONS.map(sectionForProfile).forEach((s,i)=>{
     const required=s.fields.filter(f=>f.required);
     const filled=required.filter(f=>String(values[f.code]??f.default??"").trim()!=="").length;
     const div=document.createElement("div");
@@ -129,6 +145,7 @@ function makeField(f){
     input.type="text";
     input.value=values[f.code]??f.default??"";
     if(f.readonly) input.readOnly=true;
+    if(f.maxlength) input.maxLength=f.maxlength;
     input.oninput=e=>{values[f.code]=e.target.value;updateAllStatus()};
     if(f.generate){
       const row=document.createElement("div");row.className="inline-suffix";
@@ -156,7 +173,7 @@ function makeField(f){
 
 function render(){
   buildNav();
-  const s=SECTIONS[activeSection];
+  const s=sectionForProfile(SECTIONS[activeSection]);
   $("sectionKicker").textContent=`SECTION ${activeSection+1} OF ${SECTIONS.length}`;
   $("sectionTitle").textContent=s.name;
   $("sectionDescription").textContent=s.desc;
@@ -169,7 +186,7 @@ function render(){
 }
 
 function missingRequired(){
-  return allFields().filter(f=>f.required && !String(values[f.code]??f.default??"").trim());
+  return allFields().map(fieldForProfile).filter(f=>f.required && !String(values[f.code]??f.default??"").trim());
 }
 
 function buildRawPayload(){
@@ -181,7 +198,7 @@ function buildRawPayload(){
 
 function updateAllStatus(){
   buildNav();
-  const s=SECTIONS[activeSection];
+  const s=sectionForProfile(SECTIONS[activeSection]);
   const req=s.fields.filter(f=>f.required);
   const filled=req.filter(f=>String(values[f.code]??f.default??"").trim()!=="").length;
   $("progressText").textContent=`${filled}/${req.length} required`;
@@ -258,17 +275,28 @@ function autoFields(){
 }
 
 function autofill(){
-  values={
-    DCS:"SULLIVAN",DAC:"JOURDAN",DAD:"ELIZA",DBB:"09/22/1992",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
-    DAG:"20662 DUKE",DAH:"",DAI:"AURORA",DAJ:$("profile").value,DAK:"80013",
-    DAY:"BRO",DAU:"5'7\"",DAW:"",DAZ:"",
-    DBA:"02/13/2032",DBD:"02/13/2024",DAQ:"FORM-000123",DCF:"TESTDD001",DCG:"USA",DCK:"C0004884992",
-    DDA:"",DDB:"",DDK:"",DDL:"",DDD:"",
-    DCA:"R",DCB:"NONE",DCD:"NONE"
-  };
+  const profile=$("profile").value;
+  if(profile === "AZ"){
+    values={
+      DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
+      DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"AZ",DAK:"94110",
+      DAY:"BRO",DAU:"067 IN",DAW:"150",DAZ:"BRO",
+      DBA:"01012029",DBD:"01012024",DAQ:"C78706757",DCF:"SAMPLEDD12345",DCG:"USA",DCK:"",
+      DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"0",
+      DCA:"D",DCB:"NONE",DCD:"NONE"
+    };
+  } else {
+    values={
+      DCS:"SULLIVAN",DAC:"JOURDAN",DAD:"ELIZA",DBB:"09/22/1992",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
+      DAG:"20662 DUKE",DAH:"",DAI:"AURORA",DAJ:profile,DAK:"80013",
+      DAY:"BRO",DAU:"5'7\"",DAW:"",DAZ:"",
+      DBA:"02/13/2032",DBD:"02/13/2024",DAQ:"FORM-000123",DCF:"TESTDD001",DCG:"USA",DCK:"C0004884992",
+      DDA:"",DDB:"",DDK:"",DDL:"",DDD:"",
+      DCA:"R",DCB:"NONE",DCD:"NONE"
+    };
+  }
   render();
 }
-
 function nextRequired(){
   const missing=missingRequired();
   if(!missing.length){alert("Todos los campos requeridos están llenos.");return}

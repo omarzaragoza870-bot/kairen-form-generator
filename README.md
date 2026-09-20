@@ -1,17 +1,14 @@
-# KAIREN Form Generator v0.3 — Colorado + Preview lateral
+# KAIREN Form Generator v0.4 — Arizona
 
-Cambios:
-- Se conserva el menú izquierdo de secciones y Settings.
-- Se agrega un panel lateral derecho de Preview, como en la referencia.
-- Preview del PDF417 de prueba.
-- Contador de campos requeridos pendientes.
-- Validation Report dinámico.
-- Raw Payload.
-- Decoded Output.
-- Wire Ledger.
-- Botón "Fix required fields".
-- Export PNG.
-- Nombre de archivo configurable.
-- Perfiles CO, AZ, IN y AK.
+Arizona (AZ) ya está agregado como perfil listo para pruebas visuales.
 
-La API continúa generando un payload interno `TEST_FORM_V2` para pruebas del flujo.
+Cambios AZ observados en las capturas:
+- AAMVA Version 10 / DL.
+- Mismas 5 secciones y 21 campos requeridos mostrados.
+- DAJ se llena con AZ.
+- DCL se considera omitido en V10 según el aviso de la interfaz de referencia.
+- DCA usa accesos rápidos A, B, D, M, G y NONE.
+- Autofill demo de Arizona usa los valores de muestra visibles en las capturas.
+- Strict Compliance queda desactivado por defecto para AZ, como en la captura.
+
+Colorado y los demás estados continúan disponibles.
