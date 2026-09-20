@@ -1,7 +1,7 @@
 window.KAIREN_PROFILES = {
   AL: { id:"AL", name:"Alabama (AL)", ready:false, note:"Perfil Alabama gen\u00e9rico; reglas espec\u00edficas pendientes.", version:"10", subfile:"DL" },
   AK: { id:"AK", name:"Alaska (AK)", ready:false, note:"Perfil Alaska creado; reglas espec\u00edficas pendientes.", version:"10", subfile:"DL" },
-  AZ: { id:"AZ", name:"Arizona (AZ)", ready:true, note:"AZ V10: DCL no se codifica; se mantiene fuera del formulario/payload. Perfil Arizona cargado.", version:"10", subfile:"DL", strictDefault:false, dateFormat:"MMDDYYYY", heightFormat:"IN" },
+  AZ: { id:"AZ", name:"Arizona (AZ)", ready:true, note:"Arizona V10 cargado con el set de prueba AZ. DCL permanece fuera del formulario de esta versión.", version:"10", subfile:"DL", strictDefault:false, dateFormat:"MMDDYYYY", heightFormat:"IN" },
   AR: { id:"AR", name:"Arkansas (AR)", ready:false, note:"Perfil Arkansas gen\u00e9rico; reglas espec\u00edficas pendientes.", version:"10", subfile:"DL" },
   CA: { id:"CA", name:"California (CA)", ready:false, note:"Perfil California gen\u00e9rico; reglas espec\u00edficas pendientes.", version:"10", subfile:"DL" },
   CO: { id:"CO", name:"Colorado (CO)", ready:true, note:"Perfil Colorado completo para el formulario.", version:"10", subfile:"DL", strictDefault:true },

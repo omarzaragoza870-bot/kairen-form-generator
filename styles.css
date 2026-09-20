@@ -37,6 +37,9 @@ button,input,select,textarea{font:inherit}
 .form-area{padding:20px 14px}.field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px 16px}.field{min-width:0}.field.hidden-filter{display:none}.label-row{display:flex;align-items:center;gap:4px;margin-bottom:8px;font-size:10px;font-weight:700;color:#30394d}.code{font-size:9px;color:#667085;font-weight:800}.req{color:#e34d55}.optional{font-size:8px;color:#778095;font-weight:500}
 .text-input{height:44px;width:100%;border:1px solid #6f7b8f;border-radius:7px;background:#fff2f5;padding:0 11px;outline:none}.text-input:focus{box-shadow:0 0 0 3px rgba(53,104,212,.12);border-color:var(--blue)}.text-input.optional-input{border-style:dashed}
 .quick{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.chip{border:1px solid #d6dbe5;background:#fff;border-radius:7px;padding:6px 9px;font-size:9px;cursor:pointer}.chip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle;margin:0 5px 0 2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.10)}
+.color-dot.light-dot{border:1px solid #cbd0d8;box-shadow:none}
+.chip.active .color-dot{box-shadow:0 0 0 1px rgba(255,255,255,.6),inset 0 0 0 1px rgba(0,0,0,.12)}
 .inline-suffix{display:flex}.inline-suffix .text-input{border-radius:7px 0 0 7px}.inline-suffix button{border:1px solid #6f7b8f;border-left:0;border-radius:0 7px 7px 0;background:#fff2f5;padding:0 11px;font-size:9px}.helper{font-size:8px;color:#687284;margin-top:7px}
 
 .preview-sidebar{background:linear-gradient(180deg,#fff4f7,#f8dfe7);border-left:1px solid #efcfd8;padding:18px 10px;height:calc(100vh - 96px);position:sticky;top:0;overflow:auto}

@@ -29,10 +29,10 @@ const SECTIONS = [
   {
     id:"physical", name:"Physical Description", desc:"Height, weight, eye and hair color.",
     fields:[
-      {code:"DAY",name:"Eye Color",type:"choice",required:true,choices:[["BLK","Black"],["BLU","Blue"],["BRO","Brown"],["GRY","Gray"],["GRN","Green"],["HAZ","Hazel"],["MAR","Maroon"],["PNK","Pink"],["DIC","Dichromatic"],["UNK","Unknown"]]},
+      {code:"DAY",name:"Eye Color",type:"choice",required:true,choices:[["BLK","Black","#151515"],["BLU","Blue","#4f6f9d"],["BRO","Brown","#765238"],["GRY","Gray","#8a8d91"],["GRN","Green","#46845f"],["HAZ","Hazel","#9b7b42"],["MAR","Maroon","#763e49"],["PNK","Pink","#d58a9b"],["DIC","Dichromatic","linear-gradient(90deg,#765238 0 50%,#4f6f9d 50% 100%)"],["UNK","Unknown","#ffffff"]]},
       {code:"DAU",name:"Height",type:"text",required:true,quick:["5'0\"","5'2\"","5'4\"","5'6\"","5'7\"","5'8\"","5'9\"","5'10\"","5'11\"","6'0\"","6'1\"","6'2\"","6'4\""]},
       {code:"DAW",name:"Weight (pounds)",type:"text",required:false,quick:["110 lb","130 lb","150 lb","160 lb","170 lb","180 lb","190 lb","200 lb","220 lb","250 lb"]},
-      {code:"DAZ",name:"Hair Color",type:"choice",required:false,choices:[["","Omit"],["BAL","Bald"],["BLK","Black"],["BLN","Blond"],["BRO","Brown"],["GRY","Gray"],["RED","Red/Auburn"],["SDY","Sandy"],["WHI","White"],["UNK","Unknown"]]}
+      {code:"DAZ",name:"Hair Color",type:"choice",required:false,choices:[["","Omit",null],["BAL","Bald",null],["BLK","Black","#151515"],["BLN","Blond","#caaa6b"],["BRO","Brown","#765238"],["GRY","Gray","#8a8d91"],["RED","Red/Auburn","#984b37"],["SDY","Sandy","#c5a46d"],["WHI","White","#ffffff"],["UNK","Unknown","#ffffff"]]}
     ]
   },
   {
@@ -129,12 +129,24 @@ function makeField(f){
 
   if(f.type==="choice"){
     const q=document.createElement("div");q.className="quick";
-    f.choices.forEach(([val,txt])=>{
+    f.choices.forEach(([val,txt,color])=>{
       const b=document.createElement("button");
       b.type="button";b.className="chip";
       const current=String(values[f.code]??f.default??"");
       if(current===val)b.classList.add("active");
-      b.textContent=(val?val+" ":"")+txt;
+      if(color){
+        const code=document.createElement("span");
+        code.textContent=val?val+" ":"";
+        const dot=document.createElement("span");
+        dot.className="color-dot";
+        dot.style.background=color;
+        if(color==="#ffffff") dot.classList.add("light-dot");
+        const label=document.createElement("span");
+        label.textContent=txt;
+        b.appendChild(code);b.appendChild(dot);b.appendChild(label);
+      }else{
+        b.textContent=(val?val+" ":"")+txt;
+      }
       b.onclick=()=>{values[f.code]=val;render()};
       q.appendChild(b);
     });
@@ -279,11 +291,20 @@ function autofill(){
   if(profile === "AZ"){
     values={
       DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
-      DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"AZ",DAK:"94110",
+      DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"AZ",DAK:"94110      ",
       DAY:"BRO",DAU:"067 IN",DAW:"150",DAZ:"BRO",
-      DBA:"01012029",DBD:"01012024",DAQ:"C78706757",DCF:"SAMPLEDD12345",DCG:"USA",DCK:"",
-      DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"0",
+      DBA:"01012029",DBD:"01012024",DAQ:"N37872771",DCF:"SAMPLEDD12345",DCG:"USA",DCK:"",
+      DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"",
       DCA:"D",DCB:"NONE",DCD:"NONE"
+    };
+  } else if(profile === "CO"){
+    values={
+      DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
+      DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"CO",DAK:"94110",
+      DAY:"BRO",DAU:"067 IN",DAW:"150",DAZ:"BRO",
+      DBA:"01012029",DBD:"01012024",DAQ:"739041081",DCF:"SAMPLEDD12345",DCG:"USA",DCK:"",
+      DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"",
+      DCA:"R",DCB:"NONE",DCD:"NONE"
     };
   } else {
     values={
