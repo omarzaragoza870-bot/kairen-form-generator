@@ -1,45 +1,100 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>KAIREN Form Generator</title><link rel="stylesheet" href="/styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KAIREN Form Generator</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<main class="shell">
-<header class="topbar"><div><div class="brand">KAIREN</div><h1>Form Generator</h1><p>Perfiles de formulario + PDF417 genérico de prueba.</p></div><span class="badge">v0.1</span></header>
-<section class="layout">
-<div class="card">
-<div class="head"><div><small>PLANTILLA</small><h2>Datos del formulario</h2></div><select id="profile"></select></div>
-<div id="profileNote" class="note"></div>
-<div class="grid two">
-<label>Nombre<input id="firstName"></label><label>Segundo nombre<input id="middleName"></label>
-<label>Apellido<input id="lastName"></label><label>DLN / Folio<input id="dln"></label>
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-title">SECTIONS</div>
+    <nav id="sectionNav"></nav>
+
+    <div class="side-title settings-title">Settings</div>
+
+    <label class="side-label">State / Territory
+      <select id="profile"></select>
+    </label>
+
+    <div id="stateNotice" class="notice"></div>
+
+    <label class="side-label">AAMVA Version
+      <select id="version">
+        <option value="10">10 — DL/ID-2020</option>
+        <option value="09">09 — DL/ID-2016</option>
+        <option value="08">08 — DL/ID-2013</option>
+      </select>
+    </label>
+
+    <label class="side-label">Subfile Type
+      <select id="subfile">
+        <option value="DL">Driver's License (DL)</option>
+        <option value="ID">Identification Card (ID)</option>
+      </select>
+    </label>
+
+    <label class="check-row">
+      <input id="strict" type="checkbox" checked>
+      <span><b>Strict Compliance Mode</b><small>Valida campos requeridos de este formulario de prueba.</small></span>
+    </label>
+  </aside>
+
+  <main class="content">
+    <section class="top-tools">
+      <div>
+        <div class="section-kicker" id="sectionKicker"></div>
+        <h1 id="sectionTitle"></h1>
+        <p id="sectionDescription"></p>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span>⌕</span>
+          <input id="search" placeholder="Search fields (Ctrl+K)">
+        </div>
+        <label class="tool-check"><input id="requiredOnly" type="checkbox"> Required only</label>
+        <button id="nextRequired" class="tool-btn">↓ Next empty required</button>
+        <button id="autoFields" class="tool-btn">✣ Generate auto fields</button>
+        <button id="autofill" class="tool-btn accent">⚗ Autofill demo</button>
+      </div>
+      <div class="progress-row">
+        <span id="progressText">0/0 required</span>
+        <div class="progress"><i id="progressBar"></i></div>
+        <span id="fieldCount">0 fields</span>
+      </div>
+    </section>
+
+    <section id="formArea" class="form-area"></section>
+
+    <footer class="bottom-bar">
+      <div>
+        <b>PDF417 de prueba</b>
+        <span>Genera TEST_FORM_V2 para validar el flujo del formulario.</span>
+      </div>
+      <div class="bottom-actions">
+        <button id="copyData">Copiar JSON</button>
+        <button id="generate" class="primary">Generar PDF417 de prueba</button>
+      </div>
+    </footer>
+
+    <div id="previewModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div><small>PREVIEW</small><h2>PDF417 de prueba</h2></div>
+          <button id="closeModal" class="icon-btn">×</button>
+        </div>
+        <div id="preview" class="preview">Aún no hay imagen.</div>
+        <div class="modal-actions">
+          <button id="download" disabled>Descargar PNG</button>
+          <button id="closeModal2">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </main>
 </div>
-<div class="grid three">
-<label>DOB<input id="dob" placeholder="MM/DD/AAAA"></label><label>ISS<input id="iss" placeholder="MM/DD/AAAA"></label><label>EXP<input id="exp" placeholder="MM/DD/AAAA"></label>
-</div>
-<div class="grid three">
-<label>Sexo<select id="sex"><option>M</option><option>F</option><option>X</option></select></label>
-<label>HEIGHT FT<select id="heightFt"><option>5</option><option>6</option></select></label>
-<label>HEIGHT IN<select id="heightIn"></select></label>
-</div>
-<div class="grid two">
-<label>EYE<select id="eye"><option>BRO</option><option>BLK</option><option>BLU</option><option>GRN</option><option>GRY</option><option>HAZ</option></select></label>
-<label>DD<input id="dd"></label>
-</div>
-<label id="inventoryWrap">INVENTORY<input id="inventory"></label>
-<hr>
-<div class="grid two">
-<label>Calle<input id="street"></label><label>Ciudad<input id="city"></label>
-<label>Estado<input id="addressState" maxlength="2"></label><label>ZIP<input id="zip"></label>
-</div>
-<div class="actions"><button id="generate" class="primary">Generar PDF417 de prueba</button><button id="fillDemo">Cargar demo</button><button id="clear">Limpiar</button></div>
-</div>
-<aside class="card previewCard">
-<small>PREVISUALIZACIÓN</small><h2>PDF417</h2><div id="preview" class="preview">Aún no hay código generado.</div>
-<div class="actions"><button id="download" disabled>Descargar PNG</button><button id="copyPayload">Copiar datos</button></div>
-<p class="fine">Modo TEST_FORM_V1. Los perfiles controlan la interfaz y validaciones; no reproducen una codificación oficial de credenciales.</p>
-</aside>
-</section></main>
-<script src="/profiles.js"></script><script src="/app.js"></script>
-</body></html>
+<script src="/profiles.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

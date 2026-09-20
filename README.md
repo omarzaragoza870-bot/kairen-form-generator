@@ -1,17 +1,28 @@
-# KAIREN Form Generator v0.1
+# KAIREN Form Generator v0.2 — Colorado
 
-Perfiles iniciales:
-- Colorado (CO)
-- Arizona (AZ)
-- Indiana (IN)
-- Alaska (AK)
+Esta versión replica la estructura visual del formulario de referencia para el perfil Colorado:
 
-La web genera un PDF417 genérico de prueba (`TEST_FORM_V1`) y queda preparada para Vercel.
-Colorado conserva la regla conocida de INVENTORY de 11 caracteres alfanuméricos.
-Arizona, Indiana y Alaska ya existen como perfiles, pero sus reglas específicas quedan listas para ajustarse conforme hagas cada plantilla.
+1. Identity
+2. Address
+3. Physical Description
+4. License Details
+5. Driving Privileges
 
-## Deploy
-1. Sube la carpeta a GitHub.
-2. Importa el repo en Vercel.
-3. Framework preset: Other.
-4. Deploy.
+Incluye:
+- navegación lateral por secciones;
+- búsqueda de campos;
+- filtro de requeridos;
+- "Next empty required";
+- generación de campos automáticos de prueba;
+- Autofill demo;
+- perfiles CO, AZ, IN y AK;
+- Colorado completamente maquetado;
+- PDF417 genérico de prueba `TEST_FORM_V2`;
+- descarga PNG.
+
+## Importante
+La API genera un payload interno de prueba. No reproduce una codificación oficial de credenciales.
+
+## Actualizar tu proyecto en Vercel
+Reemplaza los archivos del repo anterior por los de esta carpeta y haz push a GitHub.
+Vercel desplegará automáticamente si el repositorio ya está conectado.
