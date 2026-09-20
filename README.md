@@ -9,3 +9,9 @@
 
 ## Photoshop
 La API queda lista para que el script JSX mande los datos y reciba directamente el PNG.
+
+
+## v0.4.6
+- DDE/DDF/DDG automáticos: si el nombre correspondiente contiene una sola letra => T; en otro caso => N.
+- Driving Privileges ahora mantiene visualmente seleccionado el botón rápido elegido (DCA/DCB/DCD).
+- Si escribes manualmente el mismo código, el recuadro correspondiente también se marca.

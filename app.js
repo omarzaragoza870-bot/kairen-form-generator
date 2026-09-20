@@ -119,11 +119,49 @@ function buildNav(){
   });
 }
 
+function quickValue(code, txt){
+  const first = String(txt).split(" ")[0];
+  return first === "NONE" ? "NONE" : first;
+}
+
+function truncationValue(text){
+  const letters = String(text || "").toUpperCase().replace(/[^A-Z]/g, "");
+  return letters.length === 1 ? "T" : "N";
+}
+
+function syncTruncationFromName(code){
+  const map = {DCS:"DDE", DAC:"DDF", DAD:"DDG"};
+  const target = map[code];
+  if(!target) return;
+  values[target] = truncationValue(values[code]);
+  refreshChoiceActive(target);
+}
+
+function syncAllTruncation(){
+  values.DDE = truncationValue(values.DCS);
+  values.DDF = truncationValue(values.DAC);
+  values.DDG = truncationValue(values.DAD);
+}
+
+function refreshChoiceActive(code){
+  document.querySelectorAll('.field').forEach(el=>{
+    if(el.dataset.code !== code) return;
+    el.querySelectorAll('.chip[data-value]').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.value === String(values[code] ?? ''));
+    });
+  });
+}
+
+function refreshQuickActive(code){
+  refreshChoiceActive(code);
+}
+
 function makeField(f){
   const wrap=document.createElement("div");
   wrap.className="field";
   wrap.dataset.label=(f.code+" "+f.name).toLowerCase();
   wrap.dataset.required=f.required?"1":"0";
+  wrap.dataset.code=f.code;
 
   const label=document.createElement("div");
   label.className="label-row";
@@ -135,6 +173,7 @@ function makeField(f){
     f.choices.forEach(([val,txt,color])=>{
       const b=document.createElement("button");
       b.type="button";b.className="chip";
+      b.dataset.value=String(val);
       const current=String(values[f.code]??f.default??"");
       if(current===val)b.classList.add("active");
       if(color){
@@ -161,7 +200,7 @@ function makeField(f){
     input.value=values[f.code]??f.default??"";
     if(f.readonly) input.readOnly=true;
     if(f.maxlength) input.maxLength=f.maxlength;
-    input.oninput=e=>{values[f.code]=e.target.value;updateAllStatus();scheduleAutoPreview(450)};
+    input.oninput=e=>{values[f.code]=e.target.value;syncTruncationFromName(f.code);refreshQuickActive(f.code);updateAllStatus();scheduleAutoPreview(450)};
     if(f.generate){
       const row=document.createElement("div");row.className="inline-suffix";
       row.appendChild(input);
@@ -177,6 +216,9 @@ function makeField(f){
     const q=document.createElement("div");q.className="quick";
     f.quick.forEach(txt=>{
       const b=document.createElement("button");b.type="button";b.className="chip";b.textContent=txt;
+      const qv=quickValue(f.code,txt);
+      b.dataset.value=qv;
+      if(String(values[f.code]??"")===qv)b.classList.add("active");
       b.onclick=()=>applyQuick(f.code,txt);
       q.appendChild(b);
     });
@@ -286,7 +328,7 @@ function applyQuick(code,txt){
   if(txt==="Today") values[code]=fmt(now);
   else if(txt.includes("yrs ago")){const y=parseInt(txt);const d=new Date(now);d.setFullYear(now.getFullYear()-y);values[code]=fmt(d)}
   else if(txt.startsWith("+")){const y=parseInt(txt);const d=new Date(now);d.setFullYear(now.getFullYear()+y);values[code]=fmt(d)}
-  else values[code]=txt.split(" ")[0]==="NONE"?"NONE":txt.split(" ")[0];
+  else values[code]=quickValue(code,txt);
   render();
   scheduleAutoPreview(80);
 }
@@ -306,6 +348,7 @@ function autoFields(){
   if(!values.DDF)values.DDF="N";
   if(!values.DDG)values.DDG="N";
   if(!values.DCG)values.DCG="USA";
+  syncAllTruncation();
   render();
   scheduleAutoPreview(80);
 }
@@ -340,6 +383,7 @@ function autofill(){
       DCA:"R",DCB:"NONE",DCD:"NONE"
     };
   }
+  syncAllTruncation();
   render();
   scheduleAutoPreview(80);
 }
@@ -356,6 +400,7 @@ function nextRequired(){
 }
 
 function collect(){
+  syncAllTruncation();
   const out={profile:$("profile").value,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode:"TEST_FORM_V2",fields:{}};
   allFields().forEach(f=>out.fields[f.code]=String(values[f.code]??f.default??""));
   return out;
