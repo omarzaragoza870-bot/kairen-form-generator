@@ -206,9 +206,28 @@ function missingRequired(){
 
 function buildRawPayload(){
   const c=collect();
-  const pairs=[`MODE=${c.mode}`,`PROFILE=${c.profile}`,`VERSION=${c.version}`,`SUBFILE=${c.subfile}`];
-  Object.keys(c.fields).sort().forEach(k=>pairs.push(`${k}=${c.fields[k]}`));
-  return pairs.join("|");
+  const iinMap={CO:"636020",AZ:"636026"};
+  const iin=iinMap[c.profile];
+  if(!iin){
+    const pairs=[`MODE=${c.mode}`,`PROFILE=${c.profile}`,`VERSION=${c.version}`,`SUBFILE=${c.subfile}`];
+    Object.keys(c.fields).sort().forEach(k=>pairs.push(`${k}=${c.fields[k]}`));
+    return pairs.join("|");
+  }
+
+  const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DDE","DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"];
+  const f=Object.assign({},c.fields);
+  f.DAJ=c.profile;
+  let postal=String(f.DAK||"").replace(/-/g,"");
+  if(postal.length>11)postal=postal.slice(0,11);
+  while(postal.length<11)postal+=" ";
+  f.DAK=postal;
+  f.DCG=f.DCG||"USA";f.DDE=f.DDE||"N";f.DDF=f.DDF||"N";f.DDG=f.DDG||"N";
+  f.DCB=f.DCB||"NONE";f.DCD=f.DCD||"NONE";f.DCA=f.DCA||(c.profile==="AZ"?"D":"R");
+  const lines=[];
+  order.forEach(code=>{const v=String(f[code]??"").replace(/[\r\n]/g," ");if(v!=="")lines.push(code+v)});
+  const subfile="DL"+lines.join("\n")+"\n\r";
+  const len=String(subfile.length).padStart(4,"0");
+  return "@\n\x1e\rANSI "+iin+String(c.version).padStart(2,"0")+"00"+"01"+"DL"+"0031"+len+subfile;
 }
 
 function updateAllStatus(){
