@@ -66,6 +66,8 @@ let values = {};
 let lastUrl = null;
 let lastBlob = null;
 
+function allFields(){ return SECTIONS.flatMap(s=>s.fields); }
+
 function initProfiles(){
   Object.values(profiles).forEach(p=>{
     const o=document.createElement("option");
@@ -79,11 +81,9 @@ function updateProfile(){
   const p=profiles[$("profile").value];
   $("version").value=p.version;
   $("subfile").value=p.subfile;
-  $("stateNotice").textContent=p.ready
-    ? "CO profile loaded. Colorado fields enabled."
-    : p.note;
-  const daj = values.DAJ;
+  $("stateNotice").textContent=p.ready ? "CO profile loaded. Colorado fields enabled." : p.note;
   values.DAJ=p.id;
+  $("topProfile").textContent=`${p.id} · V${p.version}`;
   render();
 }
 
@@ -129,7 +129,7 @@ function makeField(f){
     input.type="text";
     input.value=values[f.code]??f.default??"";
     if(f.readonly) input.readOnly=true;
-    input.oninput=e=>{values[f.code]=e.target.value;updateProgressOnly()};
+    input.oninput=e=>{values[f.code]=e.target.value;updateAllStatus()};
     if(f.generate){
       const row=document.createElement("div");row.className="inline-suffix";
       row.appendChild(input);
@@ -165,10 +165,21 @@ function render(){
   s.fields.forEach(f=>grid.appendChild(makeField(f)));
   area.appendChild(grid);
   applyFilters();
-  updateProgressOnly();
+  updateAllStatus();
 }
 
-function updateProgressOnly(){
+function missingRequired(){
+  return allFields().filter(f=>f.required && !String(values[f.code]??f.default??"").trim());
+}
+
+function buildRawPayload(){
+  const c=collect();
+  const pairs=[`MODE=${c.mode}`,`PROFILE=${c.profile}`,`VERSION=${c.version}`,`SUBFILE=${c.subfile}`];
+  Object.keys(c.fields).sort().forEach(k=>pairs.push(`${k}=${c.fields[k]}`));
+  return pairs.join("|");
+}
+
+function updateAllStatus(){
   buildNav();
   const s=SECTIONS[activeSection];
   const req=s.fields.filter(f=>f.required);
@@ -176,6 +187,37 @@ function updateProgressOnly(){
   $("progressText").textContent=`${filled}/${req.length} required`;
   $("fieldCount").textContent=`${s.fields.length} fields`;
   $("progressBar").style.width=(req.length?filled/req.length*100:0)+"%";
+
+  const missing=missingRequired();
+  $("validationCount").textContent=`${missing.length} to fill`;
+  $("fixRequired").textContent=`↓ Fix ${missing.length} required field${missing.length===1?"":"s"}`;
+
+  const list=$("validationReport");list.innerHTML="";
+  if(missing.length===0){
+    const ok=document.createElement("div");
+    ok.className="validation-item";
+    ok.innerHTML='<span class="validation-dot"></span><div><b>OK</b> All required fields are filled.</div>';
+    list.appendChild(ok);
+  }else{
+    missing.forEach(f=>{
+      const item=document.createElement("div");
+      item.className="validation-item";
+      item.innerHTML=`<span class="validation-dot"></span><div><b>${f.code}</b> (${f.name}): Required field is empty.</div>`;
+      list.appendChild(item);
+    });
+  }
+
+  $("rawPayload").value=buildRawPayload();
+  $("filenamePreview").textContent=`On: ${exportFilename()}`;
+  $("strictBadge").textContent=$("strict").checked?"◈ STRICT":"◇ RELAXED";
+
+  if(missing.length===0 && !lastBlob){
+    $("previewEmpty").querySelector("h3").textContent="Required fields complete";
+    $("previewEmpty").querySelector("p").textContent="Click Generate PDF417 de prueba to render the preview.";
+  }else if(missing.length>0){
+    $("previewEmpty").querySelector("h3").textContent="Fill the required fields to see the barcode";
+    $("previewEmpty").querySelector("p").textContent="Or load a sample profile from Autofill demo to see a generated barcode immediately.";
+  }
 }
 
 function applyFilters(){
@@ -228,28 +270,44 @@ function autofill(){
 }
 
 function nextRequired(){
-  for(let si=activeSection;si<SECTIONS.length;si++){
-    const f=SECTIONS[si].fields.find(x=>x.required && !String(values[x.code]??x.default??"").trim());
-    if(f){activeSection=si;render();setTimeout(()=>{const el=[...document.querySelectorAll(".field")].find(e=>e.dataset.label.startsWith(f.code.toLowerCase()));el?.querySelector("input")?.focus();},0);return}
-  }
-  alert("Todos los campos requeridos están llenos.");
+  const missing=missingRequired();
+  if(!missing.length){alert("Todos los campos requeridos están llenos.");return}
+  const target=missing[0];
+  const si=SECTIONS.findIndex(s=>s.fields.some(f=>f.code===target.code));
+  activeSection=si;render();
+  setTimeout(()=>{
+    const el=[...document.querySelectorAll(".field")].find(e=>e.dataset.label.startsWith(target.code.toLowerCase()));
+    el?.querySelector("input")?.focus();
+  },0);
 }
 
 function collect(){
   const out={profile:$("profile").value,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode:"TEST_FORM_V2",fields:{}};
-  SECTIONS.forEach(s=>s.fields.forEach(f=>out.fields[f.code]=String(values[f.code]??f.default??"")));
+  allFields().forEach(f=>out.fields[f.code]=String(values[f.code]??f.default??""));
   return out;
 }
 
 function validate(){
   if(!$("strict").checked)return;
-  for(const s of SECTIONS){
-    for(const f of s.fields){
-      if(f.required && !String(values[f.code]??f.default??"").trim()){
-        activeSection=SECTIONS.indexOf(s);render();throw new Error(`Falta ${f.code} ${f.name}`);
-      }
-    }
+  const missing=missingRequired();
+  if(missing.length){
+    const f=missing[0];
+    const si=SECTIONS.findIndex(s=>s.fields.some(x=>x.code===f.code));
+    activeSection=si;render();
+    throw new Error(`Falta ${f.code} ${f.name}`);
   }
+}
+
+function exportFilename(ext="png"){
+  const p=$("profile").value;
+  const sub=$("subfile").value;
+  const v=$("version").value;
+  let name=`BARCODE_${p}_${sub}_V${v}`;
+  if($("nameInFilename").checked){
+    const full=[values.DAC,values.DAD,values.DCS].filter(Boolean).join("_").replace(/[^A-Z0-9_]+/gi,"_");
+    if(full) name+=`_${full}`;
+  }
+  return `${name}.${ext}`;
 }
 
 async function generateBarcode(){
@@ -261,9 +319,14 @@ async function generateBarcode(){
     lastBlob=await r.blob();
     if(lastUrl)URL.revokeObjectURL(lastUrl);
     lastUrl=URL.createObjectURL(lastBlob);
-    $("preview").innerHTML=`<img src="${lastUrl}" alt="PDF417 de prueba">`;
-    $("download").disabled=false;
-    $("previewModal").classList.remove("hidden");
+    $("previewImage").src=lastUrl;
+    $("previewImage").classList.remove("hidden");
+    $("previewEmpty").classList.add("hidden");
+    $("pngBtn").disabled=false;
+    $("copyImage").disabled=false;
+    $("decodedOutput").textContent=JSON.stringify(collect().fields,null,2);
+    $("wireLedger").textContent=buildRawPayload();
+    updateAllStatus();
   }catch(e){alert(e.message)}
   finally{$("generate").disabled=false;$("generate").textContent="Generar PDF417 de prueba"}
 }
@@ -273,19 +336,43 @@ async function copyJson(){
   try{await navigator.clipboard.writeText(t)}catch{prompt("Copia los datos:",t)}
 }
 
-function closeModal(){$("previewModal").classList.add("hidden")}
+function downloadPng(){
+  if(!lastUrl)return;
+  const a=document.createElement("a");
+  a.href=lastUrl;
+  a.download=exportFilename("png");
+  a.click();
+}
+
+function clearAll(){
+  values={DAJ:$("profile").value};
+  if(lastUrl)URL.revokeObjectURL(lastUrl);
+  lastUrl=null;lastBlob=null;
+  $("previewImage").classList.add("hidden");
+  $("previewEmpty").classList.remove("hidden");
+  $("pngBtn").disabled=true;
+  $("copyImage").disabled=true;
+  render();
+}
 
 $("profile").onchange=updateProfile;
+$("version").onchange=()=>{ $("topProfile").textContent=`${$("profile").value} · V${$("version").value}`; updateAllStatus(); };
+$("subfile").onchange=updateAllStatus;
+$("strict").onchange=updateAllStatus;
+$("nameInFilename").onchange=updateAllStatus;
 $("search").oninput=applyFilters;
 $("requiredOnly").onchange=applyFilters;
 $("nextRequired").onclick=nextRequired;
+$("fixRequired").onclick=nextRequired;
 $("autoFields").onclick=autoFields;
 $("autofill").onclick=autofill;
 $("generate").onclick=generateBarcode;
+$("pngBtn").onclick=downloadPng;
+$("copyJson").onclick=copyJson;
 $("copyData").onclick=copyJson;
-$("closeModal").onclick=closeModal;
-$("closeModal2").onclick=closeModal;
-$("download").onclick=()=>{if(!lastUrl)return;const a=document.createElement("a");a.href=lastUrl;a.download=`kairen_${$("profile").value}_test_pdf417.png`;a.click()};
+$("clearAll").onclick=clearAll;
+$("copyImage").onclick=()=>alert("La copia directa de imagen depende del navegador. Usa PNG para descargar.");
 window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("search").focus()}});
 
-initProfiles();render();
+initProfiles();
+render();

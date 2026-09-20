@@ -30,7 +30,6 @@ module.exports = async (req,res) => {
     ];
 
     Object.keys(fields).sort().forEach(k => pairs.push([k, clean(fields[k])]));
-
     const text = pairs.map(([k,v]) => `${k}=${v}`).join("|");
 
     const png = await bwipjs.toBuffer({

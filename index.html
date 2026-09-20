@@ -7,6 +7,20 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+<div class="top-strip">
+  <div class="app-title">🛡 KAIREN PDF417 <span id="topProfile">CO · V10</span></div>
+  <div class="top-actions"><button>Install App</button><button class="ghost">Session</button></div>
+</div>
+
+<div class="record-bar">
+  <div class="record-left">
+    <span class="record-group">RECORD</span>
+    <button>↶</button><button>↷</button><button>Presets ▾</button><button>Batch</button>
+    <button>Compare</button><button>Scan ID</button><button>Import JSON</button><button>Export JSON</button>
+  </div>
+  <button id="clearAll" class="danger">Clear PII</button>
+</div>
+
 <div class="app">
   <aside class="sidebar">
     <div class="side-title">SECTIONS</div>
@@ -22,9 +36,9 @@
 
     <label class="side-label">AAMVA Version
       <select id="version">
-        <option value="10">10 — DL/ID-2020</option>
-        <option value="09">09 — DL/ID-2016</option>
-        <option value="08">08 — DL/ID-2013</option>
+        <option value="10">10 — AAMVA DL/ID-2020</option>
+        <option value="09">09 — AAMVA DL/ID-2016</option>
+        <option value="08">08 — AAMVA DL/ID-2013</option>
       </select>
     </label>
 
@@ -59,6 +73,7 @@
         <button id="autoFields" class="tool-btn">✣ Generate auto fields</button>
         <button id="autofill" class="tool-btn accent">⚗ Autofill demo</button>
       </div>
+
       <div class="progress-row">
         <span id="progressText">0/0 required</span>
         <div class="progress"><i id="progressBar"></i></div>
@@ -67,33 +82,67 @@
     </section>
 
     <section id="formArea" class="form-area"></section>
-
-    <footer class="bottom-bar">
-      <div>
-        <b>PDF417 de prueba</b>
-        <span>Genera TEST_FORM_V2 para validar el flujo del formulario.</span>
-      </div>
-      <div class="bottom-actions">
-        <button id="copyData">Copiar JSON</button>
-        <button id="generate" class="primary">Generar PDF417 de prueba</button>
-      </div>
-    </footer>
-
-    <div id="previewModal" class="modal hidden">
-      <div class="modal-card">
-        <div class="modal-head">
-          <div><small>PREVIEW</small><h2>PDF417 de prueba</h2></div>
-          <button id="closeModal" class="icon-btn">×</button>
-        </div>
-        <div id="preview" class="preview">Aún no hay imagen.</div>
-        <div class="modal-actions">
-          <button id="download" disabled>Descargar PNG</button>
-          <button id="closeModal2">Cerrar</button>
-        </div>
-      </div>
-    </div>
   </main>
+
+  <aside class="preview-sidebar">
+    <div class="preview-head">
+      <h2>Preview</h2>
+      <span id="strictBadge" class="strict-pill">◈ STRICT</span>
+      <button class="expand-btn">↗</button>
+    </div>
+
+    <div id="previewBox" class="preview-box">
+      <div id="previewEmpty">
+        <h3>Fill the required fields to see the barcode</h3>
+        <p>Or load a sample profile from Presets in the header to see a generated barcode immediately.</p>
+        <button id="fixRequired" class="fix-btn">↓ Fix required fields</button>
+      </div>
+      <img id="previewImage" class="preview-image hidden" alt="PDF417 preview">
+    </div>
+
+    <div class="print-note">Print size: 3” × 1” @ 300 DPI</div>
+
+    <div class="export-grid">
+      <button id="pngBtn" disabled>▧ PNG</button>
+      <button id="svgBtn" disabled>⌑ SVG</button>
+      <button id="pdfBtn" disabled>▤ PDF</button>
+      <button id="printBtn" disabled>▧ Print</button>
+    </div>
+
+    <label class="filename-check">
+      <input id="nameInFilename" type="checkbox" checked>
+      <span>Put the cardholder's name in export filenames
+        <small id="filenamePreview">On: BARCODE_CO_DL_V10.png</small>
+      </span>
+    </label>
+
+    <div class="copy-grid">
+      <button id="copyImage" disabled>▣ Copy image</button>
+      <button id="copyJson">{} Copy JSON</button>
+    </div>
+
+    <details open class="panel-block">
+      <summary>Raw Payload</summary>
+      <textarea id="rawPayload" readonly></textarea>
+    </details>
+
+    <details open class="panel-block">
+      <summary>Validation Report <span id="validationCount" class="count-pill">0 to fill</span></summary>
+      <div id="validationReport" class="validation-list"></div>
+    </details>
+
+    <details class="panel-block">
+      <summary>Decoded Output</summary>
+      <pre id="decodedOutput">No decoded output yet.</pre>
+    </details>
+
+    <details class="panel-block">
+      <summary>Wire Ledger</summary>
+      <pre id="wireLedger">No wire ledger yet.</pre>
+    </details>
+  </aside>
 </div>
+
 <script src="/profiles.js"></script>
 <script src="/app.js"></script>
 </body>
