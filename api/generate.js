@@ -1,61 +1,77 @@
 const bwipjs = require("bwip-js");
-
-const PROFILE_IIN = {
-  CO: "636020",
-  AZ: "636026"
-};
-
-const FIELD_ORDER = [
-  "DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC",
-  "DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DDE",
-  "DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"
-];
+const sharp = require("sharp");
 
 function clean(v) {
-  return String(v == null ? "" : v).replace(/[\r\n]/g, " ").trim();
+  return String(v == null ? "" : v).replace(/[\r\n|]/g, " ").trim();
 }
 
-function pad4(n) {
-  let s = String(n);
-  while (s.length < 4) s = "0" + s;
-  return s;
+function wire(v) {
+  return String(v == null ? "" : v).replace(/[\r\n]/g, " ").trim().toUpperCase();
 }
 
-function normalizePostal(v) {
-  let s = clean(v).replace(/-/g, "");
-  if (s.length > 11) s = s.slice(0, 11);
-  while (s.length < 11) s += " ";
-  return s;
+function normalizeDate(v) {
+  const digits = String(v == null ? "" : v).replace(/\D/g, "");
+  return digits.length === 8 ? digits : wire(v);
 }
 
-function buildRaw(profile, version, fields) {
-  const iin = PROFILE_IIN[profile];
-  if (!iin) throw new Error("Perfil AAMVA no configurado todavía: " + profile);
+function normalizeHeight(v) {
+  const raw = String(v == null ? "" : v).trim().toUpperCase();
+  if (/^\d{3}\s*IN$/.test(raw)) return raw.replace(/\s+/g, " ");
+  if (/^\d{2,3}$/.test(raw)) return String(parseInt(raw, 10)).padStart(3, "0") + " IN";
+  const m = raw.match(/^(\d)\s*(?:FT|['-])?\s*(\d{1,2})/);
+  if (m) {
+    const inches = parseInt(m[1], 10) * 12 + parseInt(m[2], 10);
+    return String(inches).padStart(3, "0") + " IN";
+  }
+  return raw;
+}
 
-  const f = Object.assign({}, fields || {});
-  f.DAJ = profile;
-  f.DAK = normalizePostal(f.DAK);
-  f.DCG = clean(f.DCG) || "USA";
-  f.DDE = clean(f.DDE) || "N";
-  f.DDF = clean(f.DDF) || "N";
-  f.DDG = clean(f.DDG) || "N";
-  f.DCB = clean(f.DCB) || "NONE";
-  f.DCD = clean(f.DCD) || "NONE";
-  f.DCA = clean(f.DCA) || (profile === "AZ" ? "D" : "R");
+function buildOhioV10Payload(body) {
+  const fields = Object.assign({}, body.fields || {});
+  ["DBA", "DBD", "DBB", "DDB"].forEach((k) => { fields[k] = normalizeDate(fields[k]); });
+  fields.DAU = normalizeHeight(fields.DAU);
+  fields.DAJ = "OH";
+  // Ohio sample uses an 11-character DAK field. Keep ZIP visible in the UI, pad only on the wire.
+  fields.DAK = wire(fields.DAK).padEnd(11, " ").slice(0, 11);
+
+  const order = [
+    "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC",
+    "DAY", "DAU", "DAG", "DAI", "DAJ", "DAK", "DAQ", "DCF", "DCG", "DDE",
+    "DDF", "DDG", "DAW", "DAZ", "DDA", "DDB", "DDK", "DDL"
+  ];
 
   const lines = [];
-  FIELD_ORDER.forEach(code => {
-    const value = code === "DAK" ? f.DAK : clean(f[code]);
+  order.forEach((code) => {
+    const value = code === "DAK" ? fields[code] : wire(fields[code]);
     if (value !== "") lines.push(code + value);
   });
 
-  // Data element separator = LF; segment terminator = CR.
-  // With the Colorado/Arizona reference samples this reproduces DL00310250.
-  const subfile = "DL" + lines.join("\n") + "\n\r";
-  const offset = "0031";
-  const length = pad4(subfile.length);
-  const header = "@\n\x1e\rANSI " + iin + version + "00" + "01" + "DL" + offset + length;
-  return header + subfile;
+  // The supplied Ohio sample is 249 bytes in the DL subfile when the final LF + CR terminators are included.
+  const dlBlock = "DL" + lines.join("\n") + "\n\r";
+  const length = String(dlBlock.length).padStart(4, "0");
+  const header = "@\n\x1e\rANSI 636023100001DL0031" + length;
+  return header + dlBlock;
+}
+
+function buildTestPayload(body) {
+  const profile = clean(body.profile).toUpperCase();
+  if (!/^[A-Z]{2}$/.test(profile)) throw new Error("profile debe ser un código de 2 letras.");
+
+  const version = clean(body.version) || "10";
+  const subfile = clean(body.subfile) || "DL";
+  const fields = body.fields || {};
+  const pairs = [
+    "MODE=KAIREN_TEST_V3",
+    "PROFILE=" + profile,
+    "VERSION=" + version,
+    "SUBFILE=" + subfile
+  ];
+
+  Object.keys(fields).sort().forEach((code) => {
+    const value = clean(fields[code]);
+    if (value !== "") pairs.push(clean(code).toUpperCase() + "=" + value);
+  });
+  return pairs.join("|");
 }
 
 module.exports = async (req, res) => {
@@ -68,17 +84,10 @@ module.exports = async (req, res) => {
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
     const profile = clean(body.profile).toUpperCase();
-    const version = (clean(body.version) || "10").padStart(2, "0");
-    const fields = body.fields || {};
+    const ohio = profile === "OH";
+    const raw = ohio ? buildOhioV10Payload(body) : buildTestPayload(body);
 
-    if (!PROFILE_IIN[profile]) {
-      res.statusCode = 400;
-      return res.end("Por ahora el payload exacto está configurado para CO y AZ.");
-    }
-
-    const raw = buildRaw(profile, version, fields);
-
-    const png = await bwipjs.toBuffer({
+    const source = await bwipjs.toBuffer({
       bcid: "pdf417",
       text: raw,
       scale: 3,
@@ -90,15 +99,29 @@ module.exports = async (req, res) => {
       backgroundcolor: "FFFFFF"
     });
 
+    const png = await sharp(source)
+      .resize({
+        width: 900,
+        height: 300,
+        fit: "contain",
+        kernel: "nearest",
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      })
+      .png()
+      .toBuffer();
+
     res.statusCode = 200;
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Kairen-Profile", profile);
-    res.setHeader("X-Kairen-Raw-Length", String(raw.length));
+    res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : "KAIREN_TEST_V3");
+    res.setHeader("X-Kairen-Size", "900x300");
+    if (ohio) {
+      res.setHeader("X-Kairen-IIN", "636023");
+      res.setHeader("X-Kairen-AAMVA-Version", "10");
+    }
     return res.end(png);
-
   } catch (err) {
-    res.statusCode = 500;
+    res.statusCode = 400;
     return res.end("Error generando PDF417: " + err.message);
   }
 };

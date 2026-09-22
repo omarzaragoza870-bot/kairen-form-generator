@@ -78,6 +78,9 @@ function fieldForProfile(f){
   if(p.id === "AZ" && f.code === "DCA"){
     return Object.assign({}, f, {quick:["A CDL combo","B CDL heavy","D regular","M motorcycle","G regular","NONE"]});
   }
+  if(p.id === "OH" && f.code === "DCA"){
+    return Object.assign({}, f, {quick:["A CDL combo","B CDL heavy","D regular","M motorcycle","NONE"]});
+  }
   return f;
 }
 
@@ -90,7 +93,7 @@ function initProfiles(){
     const o=document.createElement("option");
     o.value=p.id;o.textContent=p.name;$("profile").appendChild(o);
   });
-  $("profile").value="CO";
+  $("profile").value="OH";
   updateProfile();
 }
 
@@ -130,6 +133,8 @@ function truncationValue(text){
 }
 
 function syncTruncationFromName(code){
+  const p = activeProfile();
+  if(p && p.autoTruncation === false) return;
   const map = {DCS:"DDE", DAC:"DDF", DAD:"DDG"};
   const target = map[code];
   if(!target) return;
@@ -138,6 +143,8 @@ function syncTruncationFromName(code){
 }
 
 function syncAllTruncation(){
+  const p = activeProfile();
+  if(p && p.autoTruncation === false) return;
   values.DDE = truncationValue(values.DCS);
   values.DDF = truncationValue(values.DAC);
   values.DDG = truncationValue(values.DAD);
@@ -246,30 +253,60 @@ function missingRequired(){
   return allFields().map(fieldForProfile).filter(f=>f.required && !String(values[f.code]??f.default??"").trim());
 }
 
-function buildRawPayload(){
-  const c=collect();
-  const iinMap={CO:"636020",AZ:"636026"};
-  const iin=iinMap[c.profile];
-  if(!iin){
-    const pairs=[`MODE=${c.mode}`,`PROFILE=${c.profile}`,`VERSION=${c.version}`,`SUBFILE=${c.subfile}`];
-    Object.keys(c.fields).sort().forEach(k=>pairs.push(`${k}=${c.fields[k]}`));
-    return pairs.join("|");
+function cleanWire(v){
+  return String(v == null ? "" : v).replace(/[\r\n]/g," ").trim().toUpperCase();
+}
+
+function normalizeOhioDate(v){
+  const digits=String(v||"").replace(/\D/g,"");
+  return digits.length===8 ? digits : cleanWire(v);
+}
+
+function normalizeOhioHeight(v){
+  const raw=String(v||"").trim().toUpperCase();
+  if(/^\d{3}\s*IN$/.test(raw)) return raw.replace(/\s+/g," ");
+  if(/^\d{2,3}$/.test(raw)) return String(parseInt(raw,10)).padStart(3,"0")+" IN";
+  const m=raw.match(/^(\d)\s*(?:FT|['-])?\s*(\d{1,2})/);
+  if(m){
+    const inches=(parseInt(m[1],10)*12)+parseInt(m[2],10);
+    return String(inches).padStart(3,"0")+" IN";
   }
+  return raw;
+}
+
+function buildOhioPayloadFromFields(fields){
+  const f=Object.assign({},fields);
+  ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
+  f.DAU=normalizeOhioHeight(f.DAU);
+  f.DAJ="OH";
+  f.DAK=cleanWire(f.DAK).padEnd(11," ").slice(0,11);
 
   const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DDE","DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"];
-  const f=Object.assign({},c.fields);
-  f.DAJ=c.profile;
-  let postal=String(f.DAK||"").replace(/-/g,"");
-  if(postal.length>11)postal=postal.slice(0,11);
-  while(postal.length<11)postal+=" ";
-  f.DAK=postal;
-  f.DCG=f.DCG||"USA";f.DDE=f.DDE||"N";f.DDF=f.DDF||"N";f.DDG=f.DDG||"N";
-  f.DCB=f.DCB||"NONE";f.DCD=f.DCD||"NONE";f.DCA=f.DCA||(c.profile==="AZ"?"D":"R");
   const lines=[];
-  order.forEach(code=>{const v=String(f[code]??"").replace(/[\r\n]/g," ");if(v!=="")lines.push(code+v)});
-  const subfile="DL"+lines.join("\n")+"\n\r";
-  const len=String(subfile.length).padStart(4,"0");
-  return "@\n\x1e\rANSI "+iin+String(c.version).padStart(2,"0")+"00"+"01"+"DL"+"0031"+len+subfile;
+  order.forEach(code=>{
+    const value=(code==="DAK")?f[code]:cleanWire(f[code]);
+    if(value!=="") lines.push(code+value);
+  });
+  const dlBlock="DL"+lines.join("\n")+"\n\r";
+  const length=String(dlBlock.length).padStart(4,"0");
+  const header="@\n\x1e\rANSI 636023100001DL0031"+length;
+  return header+dlBlock;
+}
+
+function buildRawPayload(){
+  const c=collect();
+  if(c.profile==="OH") return buildOhioPayloadFromFields(c.fields);
+  const pairs=[
+    `MODE=${c.mode}`,
+    `PROFILE=${c.profile}`,
+    `VERSION=${c.version}`,
+    `SUBFILE=${c.subfile}`
+  ];
+  Object.keys(c.fields).sort().forEach(code=>{
+    const value=String(c.fields[code]??"").replace(/[\r\n|]/g," ").trim();
+    if(value!=="") pairs.push(`${code}=${value}`);
+  });
+  return pairs.join("|");
 }
 
 function updateAllStatus(){
@@ -306,7 +343,7 @@ function updateAllStatus(){
 
   if(missing.length===0 && !lastBlob){
     $("previewEmpty").querySelector("h3").textContent="Required fields complete";
-    $("previewEmpty").querySelector("p").textContent="Click Generate PDF417 de prueba to render the preview.";
+    $("previewEmpty").querySelector("p").textContent="El preview se genera automáticamente. También puedes usar Generar ahora.";
   }else if(missing.length>0){
     $("previewEmpty").querySelector("h3").textContent="Fill the required fields to see the barcode";
     $("previewEmpty").querySelector("p").textContent="Or load a sample profile from Autofill demo to see a generated barcode immediately.";
@@ -355,7 +392,16 @@ function autoFields(){
 
 function autofill(){
   const profile=$("profile").value;
-  if(profile === "AZ"){
+  if(profile === "OH"){
+    values={
+      DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
+      DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"OH",DAK:"94110",
+      DAY:"BRO",DAU:"067 IN",DAW:"150",DAZ:"BRO",
+      DBA:"01012029",DBD:"01012024",DAQ:"ID137576",DCF:"SAMPLEDD12345",DCG:"USA",DCK:"",
+      DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"",
+      DCA:"D",DCB:"NONE",DCD:"NONE"
+    };
+  } else if(profile === "AZ"){
     values={
       DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
       DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"AZ",DAK:"94110      ",
@@ -383,7 +429,7 @@ function autofill(){
       DCA:"R",DCB:"NONE",DCD:"NONE"
     };
   }
-  syncAllTruncation();
+  if(profile !== "OH") syncAllTruncation();
   render();
   scheduleAutoPreview(80);
 }
@@ -401,7 +447,9 @@ function nextRequired(){
 
 function collect(){
   syncAllTruncation();
-  const out={profile:$("profile").value,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode:"TEST_FORM_V2",fields:{}};
+  const profile=$("profile").value;
+  const mode=profile==="OH"?"OH_AAMVA_V10_2020":"KAIREN_TEST_V3";
+  const out={profile,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode,fields:{}};
   allFields().forEach(f=>out.fields[f.code]=String(values[f.code]??f.default??""));
   return out;
 }
@@ -525,7 +573,7 @@ async function refreshPreview(silent=false){
     if(requestId===previewRequestId) setLiveState("idle");
     if(!silent && generateBtn){
       generateBtn.disabled=false;
-      generateBtn.textContent="Generar PDF417 de prueba";
+      generateBtn.textContent="Generar ahora";
     }
   }
 }
@@ -577,5 +625,23 @@ bind("clearAll","onclick",clearAll);
 bind("copyImage","onclick",()=>alert("La copia directa de imagen depende del navegador. Usa PNG para descargar."));
 window.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();$("search")?.focus()}});
 
+async function checkApiHealth(){
+  const badge=$("apiBadge");
+  if(!badge) return;
+  badge.textContent="API · comprobando";
+  badge.classList.remove("ok","bad");
+  try{
+    const r=await fetch("/api/health",{cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const data=await r.json();
+    badge.textContent=`API · ${data.ok?"lista":"error"}`;
+    badge.classList.add(data.ok?"ok":"bad");
+  }catch(e){
+    badge.textContent="API · sin conexión";
+    badge.classList.add("bad");
+  }
+}
+
 initProfiles();
 render();
+checkApiHealth();

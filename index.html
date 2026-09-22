@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>KAIREN Form Generator</title>
+  <title>KAIREN PDF417 Test Generator</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="top-strip">
-  <div class="app-title">🛡 KAIREN PDF417 <span id="topProfile">CO · V10</span></div>
+  <div class="app-title">🛡 KAIREN PDF417 TEST <span id="topProfile">CO · V10</span></div>
   <div class="top-actions"><button>Install App</button><button class="ghost">Session</button></div>
 </div>
 
@@ -34,11 +34,11 @@
 
     <div id="stateNotice" class="notice"></div>
 
-    <label class="side-label">AAMVA Version
+    <label class="side-label">Version (referencia)
       <select id="version">
-        <option value="10">10 — AAMVA DL/ID-2020</option>
-        <option value="09">09 — AAMVA DL/ID-2016</option>
-        <option value="08">08 — AAMVA DL/ID-2013</option>
+        <option value="10">10 — referencia 2020</option>
+        <option value="09">09 — referencia 2016</option>
+        <option value="08">08 — referencia 2013</option>
       </select>
     </label>
 
@@ -86,7 +86,7 @@
 
   <aside class="preview-sidebar">
     <div class="preview-head">
-      <h2>Preview</h2>
+      <h2>Preview</h2><span id="apiBadge" class="api-pill">API · comprobando</span>
       <span id="strictBadge" class="strict-pill">◈ STRICT</span>
       <span id="liveBadge" class="live-pill">● LIVE</span>
       <button class="expand-btn">↗</button>
@@ -101,7 +101,7 @@
       <img id="previewImage" class="preview-image hidden" alt="PDF417 preview">
     </div>
 
-    <div class="print-note">Print size: 3” × 1” @ 300 DPI</div>
+    <div class="print-note">Salida PNG: 900 × 300 px · payload interno de prueba</div>
 
     <div class="export-grid">
       <button id="pngBtn" disabled>▧ PNG</button>
@@ -110,7 +110,7 @@
       <button id="printBtn" disabled>▧ Print</button>
     </div>
 
-    <button id="generate" class="generate-preview-btn">Generar PDF417 de prueba</button>
+    <button id="generate" class="generate-preview-btn">Generar ahora</button>
 
     <label class="filename-check">
       <input id="nameInFilename" type="checkbox" checked>
