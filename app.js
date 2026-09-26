@@ -413,9 +413,66 @@ function akUnique(prefix, maker){
   try{localStorage.setItem(key,JSON.stringify(used))}catch(e){}
   return v;
 }
+function akStartDay(d){ return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function akAddDays(d,n){ const x=akStartDay(d); x.setDate(x.getDate()+n); return x; }
 function akDate(d){ return String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0")+"/"+d.getFullYear(); }
-function akRandomDOB(){ const now=new Date(); const age=21+Math.floor(Math.random()*45); const d=new Date(now.getFullYear()-age,Math.floor(Math.random()*12),1+Math.floor(Math.random()*28)); return akDate(d); }
-function akRandomIssue(){ const now=new Date(); const d=new Date(now.getFullYear()-Math.floor(Math.random()*4),Math.floor(Math.random()*12),1+Math.floor(Math.random()*28)); if(d>now)d.setFullYear(d.getFullYear()-1); return d; }
+function akParseDate(v){
+  const m=String(v||"").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m)return null;
+  const d=new Date(+m[3],+m[1]-1,+m[2]);
+  if(d.getFullYear()!=+m[3]||d.getMonth()!=+m[1]-1||d.getDate()!=+m[2])return null;
+  return d;
+}
+function akRandomDateBetween(a,b){
+  a=akStartDay(a); b=akStartDay(b);
+  const days=Math.floor((b-a)/86400000);
+  if(days<0) throw new Error("Invalid Alaska date range");
+  return new Date(a.getTime()+Math.floor(Math.random()*(days+1))*86400000);
+}
+function akRandomDOB(){
+  const now=akStartDay(new Date());
+  const oldest=new Date(now.getFullYear()-65,now.getMonth(),now.getDate());
+  let newest=new Date(now.getFullYear()-21,now.getMonth(),now.getDate());
+  newest=akAddDays(newest,-2);
+  return akDate(akRandomDateBetween(oldest,newest));
+}
+function akIssueFromDOB(){
+  const now=akStartDay(new Date());
+  const yesterday=akAddDays(now,-1);
+  let dob=akParseDate(values.DBB);
+  if(!dob){ values.DBB=akRandomDOB(); dob=akParseDate(values.DBB); }
+  let birthday21=new Date(dob.getFullYear()+21,dob.getMonth(),dob.getDate());
+  birthday21=akStartDay(birthday21);
+  const threeYearsAgo=new Date(now.getFullYear()-3,now.getMonth(),now.getDate());
+
+  // EXP debe ser al menos 1 anio posterior a hoy.
+  const minExp=new Date(now.getFullYear()+1,now.getMonth(),now.getDate());
+  let requiredExpYear=minExp.getFullYear();
+  if(new Date(requiredExpYear,7,7).getTime() < minExp.getTime()) requiredExpYear++;
+  const earliestIssueYear=requiredExpYear-8;
+  const earliestIssueByExp=new Date(earliestIssueYear,0,1);
+
+  const minIssue=new Date(Math.max(
+    akAddDays(birthday21,1).getTime(),
+    akStartDay(threeYearsAgo).getTime(),
+    akStartDay(earliestIssueByExp).getTime()
+  ));
+  return akRandomDateBetween(minIssue,yesterday);
+}
+function akExpirationFromIssue(d){ return new Date(d.getFullYear()+8,7,7); }
+function akValidateDateRules(){
+  if($('profile')?.value!=="AK") return;
+  const dob=akParseDate(values.DBB), iss=akParseDate(values.DBD);
+  if(!dob || !iss) return;
+  const now=akStartDay(new Date());
+  const birthday21=akStartDay(new Date(dob.getFullYear()+21,dob.getMonth(),dob.getDate()));
+  if(iss.getTime()<=birthday21.getTime()) throw new Error("AK: ISS debe ser posterior al cumpleanos 21.");
+  if(iss.getTime()>=now.getTime()) throw new Error("AK: ISS debe ser anterior a hoy.");
+  const exp=akExpirationFromIssue(iss);
+  const minExp=akStartDay(new Date(now.getFullYear()+1,now.getMonth(),now.getDate()));
+  values.DBA=akDate(exp);
+  if(exp.getTime()<minExp.getTime()) throw new Error(`AK: EXP calculada ${akDate(exp)} debe ser minimo 1 anio posterior a hoy (${akDate(minExp)}).`);
+}
 function akSetCity(){ const cities=[["ANCHORAGE","99501"],["FAIRBANKS","99701"],["JUNEAU","99801"],["SITKA","99835"],["KETCHIKAN","99901"],["WASILLA","99654"],["PALMER","99645"],["KENAI","99611"],["HOMER","99603"],["KODIAK","99615"]]; const c=akPick(cities); values.DAI=c[0];values.DAK=c[1]; }
 function randomizeAKField(code){
   const male=["MARCUS","ETHAN","NOAH","CALEB","JULIAN","ADRIAN","MILES","OWEN","ELIAS","NOLAN"];
@@ -426,7 +483,7 @@ function randomizeAKField(code){
   if(code==="DCS") values.DCS=akPick(last);
   else if(code==="DAC") values.DAC=akPick((values.DBC==="1")?male:(values.DBC==="2")?female:male.concat(female));
   else if(code==="DAD") values.DAD=akPick(middle);
-  else if(code==="DBB") values.DBB=akRandomDOB();
+  else if(code==="DBB"){ values.DBB=akRandomDOB(); const d=akIssueFromDOB(); values.DBD=akDate(d); values.DBA=akDate(akExpirationFromIssue(d)); }
   else if(code==="DBC") values.DBC=akPick(["1","2"]);
   else if(code==="DAG") values.DAG=(101+Math.floor(Math.random()*9799))+" "+akPick(streets);
   else if(code==="DAI"||code==="DAK") akSetCity();
@@ -434,8 +491,8 @@ function randomizeAKField(code){
   else if(code==="DAU"){ const ft=akPick([5,6]), inch=Math.floor(Math.random()*12); values.DAU=String(ft*12+inch).padStart(3,"0")+" IN"; }
   else if(code==="DAW") values.DAW=String(110+Math.floor(Math.random()*131));
   else if(code==="DAZ") values.DAZ=akPick(["BRO","BLK","BLN","GRY","RED","SDY"]);
-  else if(code==="DBD"){ const d=akRandomIssue(); values.DBD=akDate(d); const e=new Date(d);e.setFullYear(e.getFullYear()+5);values.DBA=akDate(e); }
-  else if(code==="DBA"){ const d=values.DBD?new Date(values.DBD):akRandomIssue(); const e=new Date(d); e.setFullYear(e.getFullYear()+5); values.DBA=akDate(e); }
+  else if(code==="DBD"){ const d=akIssueFromDOB(); values.DBD=akDate(d); values.DBA=akDate(akExpirationFromIssue(d)); }
+  else if(code==="DBA"){ let d=akParseDate(values.DBD); if(!d){ d=akIssueFromDOB(); values.DBD=akDate(d); } values.DBA=akDate(akExpirationFromIssue(d)); }
   else if(code==="DAQ") values.DAQ=akUnique("DLN",()=>String(1+Math.floor(Math.random()*9))+akDigits(6));
   else if(code==="DCF") values.DCF=akUnique("DD",()=>"AK"+akAlpha(10));
   else if(code==="DCK") values.DCK=akUnique("INV",()=>"1"+akDigits(9));
@@ -554,6 +611,7 @@ function validate(){
     activeSection=si;render();
     throw new Error(`Falta ${f.code} ${f.name}`);
   }
+  akValidateDateRules();
 }
 
 function exportFilename(ext="png"){
