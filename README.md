@@ -20,9 +20,24 @@ Salida PDF417: PNG 900x300.
 - La carga manual sigue disponible en el JSX como respaldo.
 
 
-## v0.5.4 Alaska UX
+## v0.5.6 Alaska UX
 - DDK, DDL y DDD muestran Yes/No en la interfaz, conservando 1/0 internamente.
 - DDA muestra Yes/No con etiquetas legibles y conserva F/N internamente.
 - Boton global Alaska al azar y botones Al azar por campo.
 - Historial local en el navegador para evitar repetir DAQ/DCF/DCK en esa PC.
 - Audit Information es interno y no se incluye en el payload PDF417.
+
+- Alaska: ISS aleatorio siempre es posterior al cumpleanos 21 y anterior a hoy.
+- Alaska: EXP se calcula como 08/07 del anio de ISS + 8.
+
+- Alaska: EXP debe quedar como minimo 1 anio despues de la fecha actual.
+
+
+## Cambio v0.5.7
+- El CODE128 de Alaska se genera sin texto legible debajo; solo se renderizan las barras.
+
+
+## Alaska - formatos v0.5.8
+- INVENTORY: exactamente 11 digitos, siempre inicia con `1000` (ej. `10001234567`).
+- DD / DCF: `7 digitos + espacio + 9 digitos + VSI-0` (ej. `4744645 083845817VSI-0`).
+- CODE128 sigue usando el mismo INVENTORY y se genera sin texto humano debajo.

@@ -58,7 +58,13 @@ function buildAlaskaV10Payload(body) {
   ["DBA", "DBD", "DBB", "DDB"].forEach((k) => { fields[k] = normalizeDate(fields[k]); });
   fields.DAU = normalizeHeight(fields.DAU);
   fields.DAJ = "AK";
-  fields.DAK = wire(fields.DAK).padEnd(11, " ").slice(0, 11);
+  fields.DAK = wire(fields.DAK).replace(/\D/g, "").padEnd(11, " ").slice(0, 11);
+
+  // Alaska DD: 7 digitos + espacio + 9 digitos + VSI-0.
+  fields.DCF = wire(fields.DCF);
+  if (!/^\d{7} \d{9}VSI-0$/.test(fields.DCF)) {
+    throw new Error("DCF/DD debe usar el formato 4744645 083845817VSI-0");
+  }
 
   const order = [
     "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC",

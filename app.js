@@ -289,7 +289,7 @@ function buildOhioPayloadFromFields(fields){
   ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
   f.DAU=normalizeOhioHeight(f.DAU);
   f.DAJ="OH";
-  f.DAK=cleanWire(f.DAK).padEnd(11," ").slice(0,11);
+  f.DAK=cleanWire(f.DAK).replace(/\D/g,"").padEnd(11," ").slice(0,11);
 
   const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DDE","DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"];
   const lines=[];
@@ -308,7 +308,7 @@ function buildAlaskaPayloadFromFields(fields){
   ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
   f.DAU=normalizeOhioHeight(f.DAU);
   f.DAJ="AK";
-  f.DAK=cleanWire(f.DAK).padEnd(11," ").slice(0,11);
+  f.DAK=cleanWire(f.DAK).replace(/\D/g,"").padEnd(11," ").slice(0,11);
 
   const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DDE","DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"];
   const lines=[];
@@ -473,7 +473,7 @@ function akValidateDateRules(){
   values.DBA=akDate(exp);
   if(exp.getTime()<minExp.getTime()) throw new Error(`AK: EXP calculada ${akDate(exp)} debe ser minimo 1 anio posterior a hoy (${akDate(minExp)}).`);
 }
-function akSetCity(){ const cities=[["ANCHORAGE","99501"],["FAIRBANKS","99701"],["JUNEAU","99801"],["SITKA","99835"],["KETCHIKAN","99901"],["WASILLA","99654"],["PALMER","99645"],["KENAI","99611"],["HOMER","99603"],["KODIAK","99615"]]; const c=akPick(cities); values.DAI=c[0];values.DAK=c[1]; }
+function akSetCity(){ const cities=[["ANCHORAGE","99501"],["FAIRBANKS","99701"],["JUNEAU","99801"],["SITKA","99835"],["KETCHIKAN","99901"],["WASILLA","99654"],["PALMER","99645"],["KENAI","99611"],["HOMER","99603"],["KODIAK","99615"]]; const c=akPick(cities); values.DAI=c[0];values.DAK=c[1]+"-"+String(Math.floor(Math.random()*10000)).padStart(4,"0"); }
 function randomizeAKField(code){
   const male=["MARCUS","ETHAN","NOAH","CALEB","JULIAN","ADRIAN","MILES","OWEN","ELIAS","NOLAN"];
   const female=["MAYA","ELENA","NAOMI","CLARA","LENA","NORA","TALIA","VERA","ALINA","MARA"];
@@ -494,8 +494,8 @@ function randomizeAKField(code){
   else if(code==="DBD"){ const d=akIssueFromDOB(); values.DBD=akDate(d); values.DBA=akDate(akExpirationFromIssue(d)); }
   else if(code==="DBA"){ let d=akParseDate(values.DBD); if(!d){ d=akIssueFromDOB(); values.DBD=akDate(d); } values.DBA=akDate(akExpirationFromIssue(d)); }
   else if(code==="DAQ") values.DAQ=akUnique("DLN",()=>String(1+Math.floor(Math.random()*9))+akDigits(6));
-  else if(code==="DCF") values.DCF=akUnique("DD",()=>"AK"+akAlpha(10));
-  else if(code==="DCK") values.DCK=akUnique("INV",()=>"1"+akDigits(9));
+  else if(code==="DCF") values.DCF=akUnique("DD",()=>akDigits(7)+" "+akDigits(9)+"VSI-0");
+  else if(code==="DCK") values.DCK=akUnique("INV",()=>"1000"+akDigits(7));
   else if(code==="DDA") values.DDA=akPick(["F","N"]);
   else if(code==="DDK"||code==="DDL"||code==="DDD") values[code]=akPick(["0","1"]);
   else if(code==="AK_AUDIT") values.AK_AUDIT="AK-AUD-"+akAlpha(12);
@@ -545,7 +545,7 @@ function autofill(){
       DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
       DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"AK",DAK:"94110",
       DAY:"BRO",DAU:"067 IN",DAW:"150",DAZ:"BRO",
-      DBA:"01012029",DBD:"01012024",DAQ:"7434265",DCF:"SAMPLEDD12345",DCG:"USA",DCK:"",
+      DBA:"01012029",DBD:"01012024",DAQ:"7434265",DCF:"4744645 083845817VSI-0",DCG:"USA",DCK:"10001234567",
       DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"",
       DCA:"D",DCB:"NONE",DCD:"NONE"
     };

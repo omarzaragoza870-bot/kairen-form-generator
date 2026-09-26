@@ -21,14 +21,16 @@ module.exports = async (req, res) => {
     // Aceptamos inventory directo o fields.DCK para mantener compatibilidad futura.
     const inventory = clean(body.inventory || (body.fields && body.fields.DCK)).toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (!inventory) throw new Error("Falta INVENTORY.");
-    if (inventory.length > 20) throw new Error("INVENTORY no puede exceder 20 caracteres.");
+    if (!/^1000\d{7}$/.test(inventory)) {
+      throw new Error("INVENTORY debe tener 11 digitos y comenzar con 1000. Ejemplo: 10001234567");
+    }
 
     const source = await bwipjs.toBuffer({
       bcid: "code128",
       text: inventory,
       scale: 4,
       height: 18,
-      includetext: true,
+      includetext: false,
       textxalign: "center",
       textsize: 11,
       paddingwidth: 8,
