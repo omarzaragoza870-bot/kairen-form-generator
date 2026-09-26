@@ -39,15 +39,35 @@ module.exports = async (req, res) => {
       backgroundcolor: "FFFFFF"
     });
 
-    // Quitar el blanco sobrante, girarlo vertical y hacer que el propio
-    // barcode ocupe el lienzo objetivo de Alaska:
-    // 9.99 x 21.12 mm a 600 ppp ~= 236 x 499 px.
-    const png = await sharp(source)
+    // Alaska: queremos un lienzo VERTICAL, pero con las barras en sentido
+    // HORIZONTAL (como la referencia de Photoshop). Para evitar que el
+    // redimensionado vuelva a dejar barras verticales, primero formamos el
+    // barcode en LANDSCAPE y SOLO AL FINAL lo giramos 90 grados.
+    // Objetivo final: 9.99 x 21.12 mm a 600 ppp ~= 236 x 499 px.
+    const landscape = await sharp(source)
       .trim({
         background: { r: 255, g: 255, b: 255 },
         threshold: 8
       })
+      .resize({
+        width: 495,
+        height: 232,
+        fit: "fill",
+        kernel: "nearest"
+      })
+      .png()
+      .toBuffer();
+
+    const png = await sharp(landscape)
       .rotate(90, { background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      // Margen minimo de 2 px por lado, sin el lienzo blanco enorme.
+      .extend({
+        top: 2,
+        bottom: 2,
+        left: 2,
+        right: 2,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      })
       .resize({
         width: 236,
         height: 499,
@@ -62,7 +82,7 @@ module.exports = async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Kairen-Barcode", "CODE128");
     res.setHeader("X-Kairen-Profile", "AK");
-    res.setHeader("X-Kairen-Size", "236x499-TIGHT-VERTICAL");
+    res.setHeader("X-Kairen-Size", "236x499-HORIZONTAL-BARS");
     return res.end(png);
   } catch (err) {
     res.statusCode = 400;
