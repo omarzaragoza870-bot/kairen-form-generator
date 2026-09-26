@@ -10,3 +10,11 @@ Cambios:
 - Los demás perfiles continúan usando el payload interno de prueba.
 
 Salida PDF417: PNG 900x300.
+
+
+## Alaska - barcode 1D automatico
+
+- Endpoint: `POST /api/barcode`
+- Simbologia: Code 128.
+- El valor codificado es el mismo `INVENTORY` del formulario.
+- La carga manual sigue disponible en el JSX como respaldo.
