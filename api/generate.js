@@ -126,19 +126,41 @@ module.exports = async (req, res) => {
       columns: 10,
       rowmult: 2,
       includetext: false,
-      paddingwidth: 8,
-      paddingheight: 8,
+      // Alaska se genera sin margen exterior; los otros perfiles conservan
+      // el comportamiento anterior para no alterar plantillas ya estables.
+      paddingwidth: alaska ? 0 : 8,
+      paddingheight: alaska ? 0 : 8,
       backgroundcolor: "FFFFFF"
     });
 
-    const png = await sharp(source)
-      .resize({
+    let pipeline = sharp(source);
+
+    if (alaska) {
+      // Quita TODO el lienzo blanco sobrante alrededor del PDF417 y hace
+      // que el propio codigo ocupe exactamente el area objetivo:
+      // 45.64 x 13.50 mm a 600 ppp ~= 1078 x 319 px.
+      pipeline = pipeline
+        .trim({
+          background: { r: 255, g: 255, b: 255 },
+          threshold: 8
+        })
+        .resize({
+          width: 1078,
+          height: 319,
+          fit: "fill",
+          kernel: "nearest"
+        });
+    } else {
+      pipeline = pipeline.resize({
         width: 900,
         height: 300,
         fit: "contain",
         kernel: "nearest",
         background: { r: 255, g: 255, b: 255, alpha: 1 }
-      })
+      });
+    }
+
+    const png = await pipeline
       .png()
       .toBuffer();
 
@@ -146,7 +168,7 @@ module.exports = async (req, res) => {
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : (alaska ? "AK_AAMVA_V10_2020" : "KAIREN_TEST_V3"));
-    res.setHeader("X-Kairen-Size", "900x300");
+    res.setHeader("X-Kairen-Size", alaska ? "1078x319-TIGHT" : "900x300");
     if (ohio) {
       res.setHeader("X-Kairen-IIN", "636023");
       res.setHeader("X-Kairen-AAMVA-Version", "10");

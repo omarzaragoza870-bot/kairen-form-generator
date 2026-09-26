@@ -41,3 +41,15 @@ Salida PDF417: PNG 900x300.
 - INVENTORY: exactamente 11 digitos, siempre inicia con `1000` (ej. `10001234567`).
 - DD / DCF: `7 digitos + espacio + 9 digitos + VSI-0` (ej. `4744645 083845817VSI-0`).
 - CODE128 sigue usando el mismo INVENTORY y se genera sin texto humano debajo.
+
+
+## Alaska PDF417 tight crop
+- El PDF417 de Alaska se recorta al contenido, sin margen blanco sobrante.
+- Salida objetivo: 1078 x 319 px (45.64 x 13.50 mm a 600 ppp).
+- El propio PDF417 llena todo el lienzo de salida.
+
+## Alaska Barcode tight vertical
+- CODE128 sin texto y sin padding exterior.
+- Se recorta al contenido y se gira 90 grados.
+- Salida objetivo: 236 x 499 px (9.99 x 21.12 mm a 600 ppp).
+- El barcode ocupa practicamente todo el lienzo de salida.
