@@ -1,6 +1,6 @@
 window.KAIREN_PROFILES = {
   AL: { id:"AL", name:"Alabama (AL)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
-  AK: { id:"AK", name:"Alaska (AK)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
+  AK: { id:"AK", name:"Alaska (AK)", ready:true, note:"Alaska V10 / referencia 2020 configurado con IIN 636059 y el orden de campos del ejemplo proporcionado. DDE/DDF/DDG quedan manuales para respetar el payload suministrado.", version:"10", subfile:"DL", strictDefault:true, dateFormat:"MMDDYYYY", heightFormat:"IN", iin:"636059", jurisdictionVersion:"00", autoTruncation:false },
   AZ: { id:"AZ", name:"Arizona (AZ)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL", strictDefault:false, dateFormat:"MMDDYYYY", heightFormat:"IN" },
   AR: { id:"AR", name:"Arkansas (AR)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
   CA: { id:"CA", name:"California (CA)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },

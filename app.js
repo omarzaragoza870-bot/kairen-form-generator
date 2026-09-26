@@ -293,9 +293,29 @@ function buildOhioPayloadFromFields(fields){
   return header+dlBlock;
 }
 
+function buildAlaskaPayloadFromFields(fields){
+  const f=Object.assign({},fields);
+  ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
+  f.DAU=normalizeOhioHeight(f.DAU);
+  f.DAJ="AK";
+  f.DAK=cleanWire(f.DAK).padEnd(11," ").slice(0,11);
+
+  const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DDE","DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"];
+  const lines=[];
+  order.forEach(code=>{
+    const value=(code==="DAK")?f[code]:cleanWire(f[code]);
+    if(value!=="") lines.push(code+value);
+  });
+  const dlBlock="DL"+lines.join("\n")+"\n\r";
+  const length=String(dlBlock.length).padStart(4,"0");
+  const header="@\n\x1e\rANSI 636059100001DL0031"+length;
+  return header+dlBlock;
+}
+
 function buildRawPayload(){
   const c=collect();
   if(c.profile==="OH") return buildOhioPayloadFromFields(c.fields);
+  if(c.profile==="AK") return buildAlaskaPayloadFromFields(c.fields);
   const pairs=[
     `MODE=${c.mode}`,
     `PROFILE=${c.profile}`,
@@ -401,6 +421,15 @@ function autofill(){
       DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"",
       DCA:"D",DCB:"NONE",DCD:"NONE"
     };
+  } else if(profile === "AK"){
+    values={
+      DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
+      DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"AK",DAK:"94110",
+      DAY:"BRO",DAU:"067 IN",DAW:"150",DAZ:"BRO",
+      DBA:"01012029",DBD:"01012024",DAQ:"7434265",DCF:"SAMPLEDD12345",DCG:"USA",DCK:"",
+      DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"",
+      DCA:"D",DCB:"NONE",DCD:"NONE"
+    };
   } else if(profile === "AZ"){
     values={
       DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
@@ -429,7 +458,7 @@ function autofill(){
       DCA:"R",DCB:"NONE",DCD:"NONE"
     };
   }
-  if(profile !== "OH") syncAllTruncation();
+  if(profile !== "OH" && profile !== "AK") syncAllTruncation();
   render();
   scheduleAutoPreview(80);
 }
@@ -448,7 +477,7 @@ function nextRequired(){
 function collect(){
   syncAllTruncation();
   const profile=$("profile").value;
-  const mode=profile==="OH"?"OH_AAMVA_V10_2020":"KAIREN_TEST_V3";
+  const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":"KAIREN_TEST_V3");
   const out={profile,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode,fields:{}};
   allFields().forEach(f=>out.fields[f.code]=String(values[f.code]??f.default??""));
   return out;
