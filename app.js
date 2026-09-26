@@ -44,11 +44,12 @@ const SECTIONS = [
       {code:"DCF",name:"Document Discriminator",type:"text",required:true,generate:true},
       {code:"DCG",name:"Country Identification",type:"choice",required:true,choices:[["USA","United States"],["CAN","Canada"],["MEX","Mexico"]],default:"USA"},
       {code:"DCK",name:"Inventory Control Number",type:"text",required:false},
-      {code:"DDA",name:"REAL ID / Compliance Type",type:"choice",required:false,choices:[["","Omit"],["F","REAL ID"],["N","Federal limits apply"]]},
+      {code:"DDA",name:"REAL ID / Compliance Type",type:"choice",required:false,choices:[["","Omit"],["F","Yes — REAL ID"],["N","No — Federal limits apply"]]},
       {code:"DDB",name:"Card Revision Date",type:"text",required:false,generate:true},
-      {code:"DDK",name:"Organ Donor Indicator",type:"choice",required:false,choices:[["","Omit"],["1","Donor"],["0","Not a donor"]]},
-      {code:"DDL",name:"Veteran Indicator",type:"choice",required:false,choices:[["","Omit"],["1","Veteran"],["0","Not a veteran"]]},
-      {code:"DDD",name:"Limited Duration Document Indicator",type:"choice",required:false,choices:[["","Omit"],["1","Limited duration"],["0","Not limited duration"]]}
+      {code:"DDK",name:"Organ Donor Indicator",type:"choice",required:false,choices:[["","Omit"],["1","Yes"],["0","No"]]},
+      {code:"DDL",name:"Veteran Indicator",type:"choice",required:false,choices:[["","Omit"],["1","Yes"],["0","No"]]},
+      {code:"DDD",name:"Limited Duration Document Indicator",type:"choice",required:false,choices:[["","Omit"],["1","Yes"],["0","No"]]},
+      {code:"AK_AUDIT",name:"Audit Information",type:"text",required:false,akOnly:true,random:true,helper:"Dato interno de trabajo. No se incluye en el PDF417 de Alaska."}
     ]
   },
   {
@@ -68,7 +69,7 @@ let lastBlob = null;
 let autoPreviewTimer = null;
 let previewRequestId = 0;
 
-function allFields(){ return SECTIONS.flatMap(s=>s.fields); }
+function allFields(){ const p=activeProfile(); return SECTIONS.flatMap(s=>s.fields.filter(f=>!f.akOnly || p.id==="AK")); }
 
 
 function activeProfile(){ return profiles[$("profile").value] || profiles.CO; }
@@ -85,7 +86,9 @@ function fieldForProfile(f){
 }
 
 function sectionForProfile(section){
-  return Object.assign({}, section, {fields: section.fields.map(fieldForProfile)});
+  const p=activeProfile();
+  const fields=section.fields.filter(f=>!f.akOnly || p.id==="AK").map(fieldForProfile);
+  return Object.assign({}, section, {fields});
 }
 
 function initProfiles(){
@@ -93,7 +96,7 @@ function initProfiles(){
     const o=document.createElement("option");
     o.value=p.id;o.textContent=p.name;$("profile").appendChild(o);
   });
-  $("profile").value="OH";
+  $("profile").value="AK";
   updateProfile();
 }
 
@@ -174,6 +177,13 @@ function makeField(f){
   label.className="label-row";
   label.innerHTML=`<span class="code">${f.code}</span><span>${f.name}</span>${f.required?'<span class="req">*</span>':'<span class="optional">optional</span>'}`;
   wrap.appendChild(label);
+
+  if(activeProfile().id==="AK" && isAKRandomizable(f.code)){
+    const rb=document.createElement("button");
+    rb.type="button"; rb.className="random-mini"; rb.textContent="🎲 Al azar";
+    rb.onclick=()=>{randomizeAKField(f.code);render();scheduleAutoPreview(80)};
+    label.appendChild(rb);
+  }
 
   if(f.type==="choice"){
     const q=document.createElement("div");q.className="quick";
@@ -390,6 +400,58 @@ function applyQuick(code,txt){
   scheduleAutoPreview(80);
 }
 
+const AK_RANDOM_CODES = new Set(["DCS","DAC","DAD","DBB","DBC","DAG","DAI","DAK","DAY","DAU","DAW","DAZ","DBA","DBD","DAQ","DCF","DCK","DDA","DDK","DDL","DDD","AK_AUDIT"]);
+function isAKRandomizable(code){ return AK_RANDOM_CODES.has(code); }
+function akPick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function akDigits(n){ let s=""; for(let i=0;i<n;i++) s+=Math.floor(Math.random()*10); return s; }
+function akAlpha(n){ const c="ABCDEFGHJKLMNPRSTUVWXYZ0123456789"; let s=""; for(let i=0;i<n;i++) s+=c[Math.floor(Math.random()*c.length)]; return s; }
+function akUnique(prefix, maker){
+  const key="kairen_ak_used_"+prefix;
+  let used=[]; try{used=JSON.parse(localStorage.getItem(key)||"[]")}catch(e){}
+  let v="", guard=0; do{v=maker(); guard++;}while(used.includes(v)&&guard<5000);
+  used.push(v); if(used.length>5000) used=used.slice(-5000);
+  try{localStorage.setItem(key,JSON.stringify(used))}catch(e){}
+  return v;
+}
+function akDate(d){ return String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0")+"/"+d.getFullYear(); }
+function akRandomDOB(){ const now=new Date(); const age=21+Math.floor(Math.random()*45); const d=new Date(now.getFullYear()-age,Math.floor(Math.random()*12),1+Math.floor(Math.random()*28)); return akDate(d); }
+function akRandomIssue(){ const now=new Date(); const d=new Date(now.getFullYear()-Math.floor(Math.random()*4),Math.floor(Math.random()*12),1+Math.floor(Math.random()*28)); if(d>now)d.setFullYear(d.getFullYear()-1); return d; }
+function akSetCity(){ const cities=[["ANCHORAGE","99501"],["FAIRBANKS","99701"],["JUNEAU","99801"],["SITKA","99835"],["KETCHIKAN","99901"],["WASILLA","99654"],["PALMER","99645"],["KENAI","99611"],["HOMER","99603"],["KODIAK","99615"]]; const c=akPick(cities); values.DAI=c[0];values.DAK=c[1]; }
+function randomizeAKField(code){
+  const male=["MARCUS","ETHAN","NOAH","CALEB","JULIAN","ADRIAN","MILES","OWEN","ELIAS","NOLAN"];
+  const female=["MAYA","ELENA","NAOMI","CLARA","LENA","NORA","TALIA","VERA","ALINA","MARA"];
+  const middle=["","LEE","JAMES","RAY","JO","MARIE","ANNE","KAI","RENE","SKYE","ALEX","QUINN"];
+  const last=["MARLOW","KENDRICK","VALE","NORTH","ELLERY","CARVER","BLAKE","ROWAN","STERLING","HOLLIS","MERCER","DALTON"];
+  const streets=["TEST AVE","SAMPLE ST","DEMO RD","NORTH STAR WAY","TUNDRA LN","GLACIER DR","AURORA CT","POLAR WAY"];
+  if(code==="DCS") values.DCS=akPick(last);
+  else if(code==="DAC") values.DAC=akPick((values.DBC==="1")?male:(values.DBC==="2")?female:male.concat(female));
+  else if(code==="DAD") values.DAD=akPick(middle);
+  else if(code==="DBB") values.DBB=akRandomDOB();
+  else if(code==="DBC") values.DBC=akPick(["1","2"]);
+  else if(code==="DAG") values.DAG=(101+Math.floor(Math.random()*9799))+" "+akPick(streets);
+  else if(code==="DAI"||code==="DAK") akSetCity();
+  else if(code==="DAY") values.DAY=akPick(["BRO","BLK","BLU","GRN","GRY","HAZ"]);
+  else if(code==="DAU"){ const ft=akPick([5,6]), inch=Math.floor(Math.random()*12); values.DAU=String(ft*12+inch).padStart(3,"0")+" IN"; }
+  else if(code==="DAW") values.DAW=String(110+Math.floor(Math.random()*131));
+  else if(code==="DAZ") values.DAZ=akPick(["BRO","BLK","BLN","GRY","RED","SDY"]);
+  else if(code==="DBD"){ const d=akRandomIssue(); values.DBD=akDate(d); const e=new Date(d);e.setFullYear(e.getFullYear()+5);values.DBA=akDate(e); }
+  else if(code==="DBA"){ const d=values.DBD?new Date(values.DBD):akRandomIssue(); const e=new Date(d); e.setFullYear(e.getFullYear()+5); values.DBA=akDate(e); }
+  else if(code==="DAQ") values.DAQ=akUnique("DLN",()=>String(1+Math.floor(Math.random()*9))+akDigits(6));
+  else if(code==="DCF") values.DCF=akUnique("DD",()=>"AK"+akAlpha(10));
+  else if(code==="DCK") values.DCK=akUnique("INV",()=>"1"+akDigits(9));
+  else if(code==="DDA") values.DDA=akPick(["F","N"]);
+  else if(code==="DDK"||code==="DDL"||code==="DDD") values[code]=akPick(["0","1"]);
+  else if(code==="AK_AUDIT") values.AK_AUDIT="AK-AUD-"+akAlpha(12);
+  if(["DCS","DAC","DAD"].includes(code)) syncTruncationFromName(code);
+}
+function randomizeAllAK(){
+  values.DBC=akPick(["1","2"]); randomizeAKField("DAC"); randomizeAKField("DAD"); randomizeAKField("DCS");
+  randomizeAKField("DBB"); randomizeAKField("DAG"); akSetCity(); randomizeAKField("DAY"); randomizeAKField("DAU"); randomizeAKField("DAW"); randomizeAKField("DAZ");
+  randomizeAKField("DBD"); randomizeAKField("DAQ"); randomizeAKField("DCF"); randomizeAKField("DCK"); randomizeAKField("DDA"); randomizeAKField("DDK"); randomizeAKField("DDL"); randomizeAKField("DDD"); randomizeAKField("AK_AUDIT");
+  values.DAJ="AK"; values.DCG="USA"; values.DCA="D"; values.DCB="NONE"; values.DCD="NONE"; values.DDE="N"; values.DDF="N"; values.DDG="N"; values.DDB="01/01/2020";
+  render(); scheduleAutoPreview(80);
+}
+
 function generateField(code){
   if(code==="DAQ") return "FORM-"+Math.floor(100000+Math.random()*900000);
   if(code==="DCF") return "TEST"+Date.now().toString().slice(-10);
@@ -479,7 +541,7 @@ function collect(){
   const profile=$("profile").value;
   const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":"KAIREN_TEST_V3");
   const out={profile,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode,fields:{}};
-  allFields().forEach(f=>out.fields[f.code]=String(values[f.code]??f.default??""));
+  allFields().forEach(f=>{ if(!f.akOnly) out.fields[f.code]=String(values[f.code]??f.default??""); });
   return out;
 }
 
@@ -647,6 +709,7 @@ bind("nextRequired","onclick",nextRequired);
 bind("fixRequired","onclick",nextRequired);
 bind("autoFields","onclick",autoFields);
 bind("autofill","onclick",autofill);
+bind("randomAK","onclick",()=>{ if($("profile").value!=="AK") $("profile").value="AK", updateProfile(); randomizeAllAK(); });
 bind("generate","onclick",generateBarcode);
 bind("pngBtn","onclick",downloadPng);
 bind("copyJson","onclick",copyJson);

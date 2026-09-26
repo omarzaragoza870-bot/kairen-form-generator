@@ -18,3 +18,11 @@ Salida PDF417: PNG 900x300.
 - Simbologia: Code 128.
 - El valor codificado es el mismo `INVENTORY` del formulario.
 - La carga manual sigue disponible en el JSX como respaldo.
+
+
+## v0.5.4 Alaska UX
+- DDK, DDL y DDD muestran Yes/No en la interfaz, conservando 1/0 internamente.
+- DDA muestra Yes/No con etiquetas legibles y conserva F/N internamente.
+- Boton global Alaska al azar y botones Al azar por campo.
+- Historial local en el navegador para evitar repetir DAQ/DCF/DCK en esa PC.
+- Audit Information es interno y no se incluye en el payload PDF417.
