@@ -17,7 +17,6 @@ module.exports = async (req, res) => {
     const profile = clean(body.profile).toUpperCase();
     if (profile !== "AK") throw new Error("El barcode automatico esta habilitado para Alaska (AK).");
 
-    // Alaska: el dato codificado es el mismo INVENTORY visible en Photoshop.
     const inventory = clean(body.inventory || (body.fields && body.fields.DCK))
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "");
@@ -27,7 +26,7 @@ module.exports = async (req, res) => {
       throw new Error("INVENTORY debe tener 11 digitos y comenzar con 1000. Ejemplo: 10001234567");
     }
 
-    // Generar CODE128 SIN texto y SIN padding exterior.
+    // 1) CODE128 normal: imagen apaisada con barras VERTICALES.
     const source = await bwipjs.toBuffer({
       bcid: "code128",
       text: inventory,
@@ -39,33 +38,16 @@ module.exports = async (req, res) => {
       backgroundcolor: "FFFFFF"
     });
 
-    // Alaska: queremos un lienzo VERTICAL, pero con las barras en sentido
-    // HORIZONTAL (como la referencia de Photoshop). Para evitar que el
-    // redimensionado vuelva a dejar barras verticales, primero formamos el
-    // barcode en LANDSCAPE y SOLO AL FINAL lo giramos 90 grados.
-    // Objetivo final: 9.99 x 21.12 mm a 600 ppp ~= 236 x 499 px.
-    const landscape = await sharp(source)
+    // 2) Recortar el blanco del generador.
+    // 3) GIRAR LOS PIXELES 90 grados: las barras quedan HORIZONTALES.
+    // 4) Mantener el LIENZO FINAL VERTICAL: 9.99 x 21.12 mm @ 600 ppp
+    //    ~= 236 x 499 px. No se gira el lienzo; solo el simbolo.
+    const png = await sharp(source)
       .trim({
         background: { r: 255, g: 255, b: 255 },
         threshold: 8
       })
-      .resize({
-        width: 495,
-        height: 232,
-        fit: "fill",
-        kernel: "nearest"
-      })
-      .png()
-      .toBuffer();
-
-    const png = await sharp(landscape)
-      .rotate(90, { background: { r: 255, g: 255, b: 255, alpha: 1 } })
-      // Margen minimo de 2 px por lado, sin el lienzo blanco enorme.
-      .extend({
-        top: 2,
-        bottom: 2,
-        left: 2,
-        right: 2,
+      .rotate(90, {
         background: { r: 255, g: 255, b: 255, alpha: 1 }
       })
       .resize({
@@ -79,10 +61,11 @@ module.exports = async (req, res) => {
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("X-Kairen-Barcode", "CODE128");
     res.setHeader("X-Kairen-Profile", "AK");
-    res.setHeader("X-Kairen-Size", "236x499-HORIZONTAL-BARS");
+    res.setHeader("X-Kairen-Orientation", "PORTRAIT-CANVAS-HORIZONTAL-BARS");
+    res.setHeader("X-Kairen-Size", "236x499");
     return res.end(png);
   } catch (err) {
     res.statusCode = 400;

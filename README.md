@@ -53,3 +53,9 @@ Salida PDF417: PNG 900x300.
 - Se recorta al contenido y se gira 90 grados.
 - Salida objetivo: 236 x 499 px (9.99 x 21.12 mm a 600 ppp).
 - El barcode ocupa practicamente todo el lienzo de salida.
+
+## Alaska barcode v0.6.3
+- Lienzo final: 236 x 499 px (aprox. 9.99 x 21.12 mm a 600 ppp).
+- El lienzo permanece vertical.
+- Solo el simbolo CODE128 se gira 90 grados para que las barras queden horizontales.
+- Sin texto debajo y sin margen exterior agregado.
