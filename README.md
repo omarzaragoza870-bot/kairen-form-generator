@@ -1,4 +1,15 @@
-# KAIREN Form Generator v0.5.2
+# KAIREN Form Generator v0.7.0
+
+## California (CA)
+- Perfil CA V10 agregado al endpoint `POST /api/generate`.
+- IIN configurado: `636014`.
+- Encabezado dinamico `ANSI 636014100001DL0031LLLL`.
+- Orden de campos CA incluye `DCK` despues de `DCG`.
+- `DDE`, `DDF` y `DDG` se calculan automaticamente: `T` solo cuando el nombre correspondiente supera 40 caracteres y se recorta para el payload; de lo contrario `N`.
+- `DAK` se rellena a 11 caracteres unicamente en el payload.
+- El perfil CA ya no usa `KAIREN_TEST_V3`; ahora genera payload CA V10.
+- `POST /api/barcode` acepta CA y genera CODE128 usando `DCK / INVENTORY` (17 caracteres alfanumericos).
+- Salida CODE128 CA: 900 x 180 px, barras verticales, sin texto.
 
 Cambios:
 - Perfil Alaska (AK) V10 / referencia 2020 agregado al generador.

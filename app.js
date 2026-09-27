@@ -82,6 +82,9 @@ function fieldForProfile(f){
   if(p.id === "OH" && f.code === "DCA"){
     return Object.assign({}, f, {quick:["A CDL combo","B CDL heavy","D regular","M motorcycle","NONE"]});
   }
+  if(p.id === "CA" && f.code === "DCA"){
+    return Object.assign({}, f, {quick:["C class","AA class","A class","B class","M motorcycle","NONE"]});
+  }
   return f;
 }
 
@@ -131,8 +134,10 @@ function quickValue(code, txt){
 }
 
 function truncationValue(text){
-  const letters = String(text || "").toUpperCase().replace(/[^A-Z]/g, "");
-  return letters.length === 1 ? "T" : "N";
+  const p = activeProfile();
+  const limit = Number((p && p.maxNameLength) || 40);
+  const value = String(text || "").trim().replace(/\s+/g," ");
+  return value.length > limit ? "T" : "N";
 }
 
 function syncTruncationFromName(code){
@@ -322,10 +327,36 @@ function buildAlaskaPayloadFromFields(fields){
   return header+dlBlock;
 }
 
+function buildCaliforniaPayloadFromFields(fields){
+  const f=Object.assign({},fields);
+  ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
+  f.DAU=normalizeOhioHeight(f.DAU);
+  f.DAJ="CA";
+  f.DAK=cleanWire(f.DAK).replace(/\D/g,"").padEnd(11," ").slice(0,11);
+
+  const family=cleanWire(f.DCS), first=cleanWire(f.DAC), middle=cleanWire(f.DAD);
+  f.DCS=family.slice(0,40); f.DAC=first.slice(0,40); f.DAD=middle.slice(0,40);
+  f.DDE=family.length>40?"T":"N";
+  f.DDF=first.length>40?"T":"N";
+  f.DDG=middle.length>40?"T":"N";
+
+  const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DCK","DDE","DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"];
+  const lines=[];
+  order.forEach(code=>{
+    const value=(code==="DAK")?f[code]:cleanWire(f[code]);
+    if(value!=="") lines.push(code+value);
+  });
+  const dlBlock="DL"+lines.join("\n")+"\n\r";
+  const length=String(dlBlock.length).padStart(4,"0");
+  const header="@\n\x1e\rANSI 636014100001DL0031"+length;
+  return header+dlBlock;
+}
+
 function buildRawPayload(){
   const c=collect();
   if(c.profile==="OH") return buildOhioPayloadFromFields(c.fields);
   if(c.profile==="AK") return buildAlaskaPayloadFromFields(c.fields);
+  if(c.profile==="CA") return buildCaliforniaPayloadFromFields(c.fields);
   const pairs=[
     `MODE=${c.mode}`,
     `PROFILE=${c.profile}`,
@@ -549,6 +580,15 @@ function autofill(){
       DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",DDD:"",
       DCA:"D",DCB:"NONE",DCD:"NONE"
     };
+  } else if(profile === "CA"){
+    values={
+      DCS:"JOE",DAC:"LUK",DAD:"NOA",DBB:"06192002",DBC:"1",DDE:"N",DDF:"N",DDG:"N",DCU:"",
+      DAG:"59 CLEVELAND",DAH:"",DAI:"CATHEDRAL CITY",DAJ:"CA",DAK:"922346508",
+      DAY:"BLU",DAU:"079 IN",DAW:"182",DAZ:"BLK",
+      DBA:"08012029",DBD:"08012024",DAQ:"F5147262",DCF:"08/01/2024526WU/BBFD/29",DCG:"USA",DCK:"24214F51472620901",
+      DDA:"F",DDB:"03192023",DDK:"0",DDL:"0",DDD:"",
+      DCA:"AA",DCB:"NONE",DCD:"NONE"
+    };
   } else if(profile === "AZ"){
     values={
       DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
@@ -596,7 +636,7 @@ function nextRequired(){
 function collect(){
   syncAllTruncation();
   const profile=$("profile").value;
-  const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":"KAIREN_TEST_V3");
+  const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":(profile==="CA"?"CA_AAMVA_V10":"KAIREN_TEST_V3"));
   const out={profile,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode,fields:{}};
   allFields().forEach(f=>{ if(!f.akOnly) out.fields[f.code]=String(values[f.code]??f.default??""); });
   return out;

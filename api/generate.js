@@ -84,6 +84,43 @@ function buildAlaskaV10Payload(body) {
   return header + dlBlock;
 }
 
+function buildCaliforniaV10Payload(body) {
+  const fields = Object.assign({}, body.fields || {});
+  ["DBA", "DBD", "DBB", "DDB"].forEach((k) => { fields[k] = normalizeDate(fields[k]); });
+  fields.DAU = normalizeHeight(fields.DAU);
+  fields.DAJ = "CA";
+  fields.DAK = wire(fields.DAK).replace(/\D/g, "").padEnd(11, " ").slice(0, 11);
+
+  // California: limitamos los campos de nombre a 40 caracteres en el payload
+  // y calculamos los indicadores DDE/DDF/DDG segun si realmente hubo recorte.
+  const rawFamily = wire(fields.DCS);
+  const rawFirst = wire(fields.DAC);
+  const rawMiddle = wire(fields.DAD);
+  fields.DCS = rawFamily.slice(0, 40);
+  fields.DAC = rawFirst.slice(0, 40);
+  fields.DAD = rawMiddle.slice(0, 40);
+  fields.DDE = rawFamily.length > 40 ? "T" : "N";
+  fields.DDF = rawFirst.length > 40 ? "T" : "N";
+  fields.DDG = rawMiddle.length > 40 ? "T" : "N";
+
+  const order = [
+    "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC",
+    "DAY", "DAU", "DAG", "DAI", "DAJ", "DAK", "DAQ", "DCF", "DCG", "DCK",
+    "DDE", "DDF", "DDG", "DAW", "DAZ", "DDA", "DDB", "DDK", "DDL"
+  ];
+
+  const lines = [];
+  order.forEach((code) => {
+    const value = code === "DAK" ? fields[code] : wire(fields[code]);
+    if (value !== "") lines.push(code + value);
+  });
+
+  const dlBlock = "DL" + lines.join("\n") + "\n\r";
+  const length = String(dlBlock.length).padStart(4, "0");
+  const header = "@\n\x1e\rANSI 636014100001DL0031" + length;
+  return header + dlBlock;
+}
+
 function buildTestPayload(body) {
   const profile = clean(body.profile).toUpperCase();
   if (!/^[A-Z]{2}$/.test(profile)) throw new Error("profile debe ser un código de 2 letras.");
@@ -117,7 +154,12 @@ module.exports = async (req, res) => {
     const profile = clean(body.profile).toUpperCase();
     const ohio = profile === "OH";
     const alaska = profile === "AK";
-    const raw = ohio ? buildOhioV10Payload(body) : (alaska ? buildAlaskaV10Payload(body) : buildTestPayload(body));
+    const california = profile === "CA";
+    const raw = ohio
+      ? buildOhioV10Payload(body)
+      : (alaska
+        ? buildAlaskaV10Payload(body)
+        : (california ? buildCaliforniaV10Payload(body) : buildTestPayload(body)));
 
     const source = await bwipjs.toBuffer({
       bcid: "pdf417",
@@ -167,7 +209,7 @@ module.exports = async (req, res) => {
     res.statusCode = 200;
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : (alaska ? "AK_AAMVA_V10_2020" : "KAIREN_TEST_V3"));
+    res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : (alaska ? "AK_AAMVA_V10_2020" : (california ? "CA_AAMVA_V10" : "KAIREN_TEST_V3")));
     res.setHeader("X-Kairen-Size", alaska ? "1078x319-TIGHT" : "900x300");
     if (ohio) {
       res.setHeader("X-Kairen-IIN", "636023");
@@ -175,6 +217,10 @@ module.exports = async (req, res) => {
     }
     if (alaska) {
       res.setHeader("X-Kairen-IIN", "636059");
+      res.setHeader("X-Kairen-AAMVA-Version", "10");
+    }
+    if (california) {
+      res.setHeader("X-Kairen-IIN", "636014");
       res.setHeader("X-Kairen-AAMVA-Version", "10");
     }
     return res.end(png);
