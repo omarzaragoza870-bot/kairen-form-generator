@@ -85,3 +85,8 @@ Salida PDF417: PNG 900x300.
 - El lienzo permanece vertical.
 - Solo el simbolo CODE128 se gira 90 grados para que las barras queden horizontales.
 - Sin texto debajo y sin margen exterior agregado.
+
+
+## NY v0.8.2
+- Nuevo endpoint dedicado `/api/barcode-ny` para CODE128 de New York desde CODIGO INFERIOR (16 digitos).
+- No cambia `/api/barcode` usado por otros perfiles.

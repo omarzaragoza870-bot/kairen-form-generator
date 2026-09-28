@@ -15,20 +15,27 @@ module.exports = async (req, res) => {
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
     const profile = clean(body.profile).toUpperCase();
-    if (profile !== "AK" && profile !== "CA") {
-      throw new Error("El barcode automatico esta habilitado para Alaska (AK) y California (CA).");
+    if (profile !== "AK" && profile !== "CA" && profile !== "NY") {
+      throw new Error("El barcode automatico esta habilitado para Alaska (AK), California (CA) y New York (NY).");
     }
 
-    const inventory = clean(body.inventory || (body.fields && body.fields.DCK))
+    const inventory = clean(
+      profile === "NY"
+        ? (body.codigoInferior || body.value || body.inventory || (body.fields && body.fields.CODIGO_INFERIOR))
+        : (body.inventory || (body.fields && body.fields.DCK))
+    )
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "");
 
-    if (!inventory) throw new Error("Falta INVENTORY / DCK.");
+    if (!inventory) throw new Error(profile === "NY" ? "Falta CODIGO INFERIOR." : "Falta INVENTORY / DCK.");
     if (profile === "AK" && !/^1000\d{7}$/.test(inventory)) {
       throw new Error("INVENTORY AK debe tener 11 digitos y comenzar con 1000. Ejemplo: 10001234567");
     }
     if (profile === "CA" && !/^[A-Z0-9]{17}$/.test(inventory)) {
       throw new Error("DCK / INVENTORY CA debe tener 17 caracteres alfanumericos.");
+    }
+    if (profile === "NY" && !/^[0-9]{16}$/.test(inventory)) {
+      throw new Error("CODIGO INFERIOR NY debe contener 16 digitos: 5 + 9 + 2.");
     }
 
     // 1) CODE128 normal: imagen apaisada con barras VERTICALES.
@@ -54,7 +61,7 @@ module.exports = async (req, res) => {
         .rotate(90, { background: { r: 255, g: 255, b: 255, alpha: 1 } })
         .resize({ width: 236, height: 499, fit: "fill", kernel: "nearest" });
     } else {
-      // California usa un CODE128 apaisado con barras verticales.
+      // California y New York usan CODE128 apaisado con barras verticales.
       pipeline = pipeline.resize({
         width: 900,
         height: 180,
