@@ -1,4 +1,19 @@
-# KAIREN Form Generator v0.7.0
+# KAIREN Form Generator v0.8.0
+
+## New York (NY)
+- Perfil NY V10 agregado al endpoint `POST /api/generate`.
+- Basado exclusivamente en el primer payload NY proporcionado para este proyecto.
+- IIN: `636001`.
+- Jurisdiction Version: `04`.
+- Un solo subarchivo `DL` (`01`).
+- Encabezado dinamico: `ANSI 636001100401DL0031LLLL`.
+- Orden NY: `DCA DCB DCD DBA DCS DAC DAD DBD DBB DBC DAY DAU DAG DAI DAJ DAK DAQ DCF DCG DDE DDF DDG DDA DDB DDK DDL`.
+- `DAQ` exige 9 digitos.
+- Se omiten del perfil NY los campos que no aparecen en la muestra: `DCU`, `DAH`, `DAW`, `DAZ`, `DCK` y `DDD`.
+- Anchuras fijas reproducidas desde la muestra: `DCA=4`, `DCB=10`, `DCS/DAC/DAD/DAG=25`, `DAI=20`, `DAK=11`.
+- Con el preset NY incluido, el subarchivo mide exactamente `0331` bytes y genera el encabezado `ANSI 636001100401DL00310331`.
+- `Autofill demo` carga los valores del primer ejemplo NY.
+- No se incluye el segundo ejemplo con subarchivo `ZN`.
 
 ## California (CA)
 - Perfil CA V10 agregado al endpoint `POST /api/generate`.

@@ -121,6 +121,47 @@ function buildCaliforniaV10Payload(body) {
   return header + dlBlock;
 }
 
+function buildNewYorkV10Payload(body) {
+  const fields = Object.assign({}, body.fields || {});
+  ["DBA", "DBD", "DBB", "DDB"].forEach((k) => { fields[k] = normalizeDate(fields[k]); });
+  fields.DAU = normalizeHeight(fields.DAU);
+  fields.DAJ = "NY";
+
+  // Primer ejemplo NY suministrado por el usuario.
+  // Anchuras fijas observadas en ese payload:
+  // DCA=4, DCB=10, DCS/DAC/DAD/DAG=25, DAI=20 y DAK=11.
+  const widths = { DCA:4, DCB:10, DCS:25, DAC:25, DAD:25, DAG:25, DAI:20, DAK:11 };
+  function nyWire(code, value) {
+    let v = wire(value);
+    if (code === "DAK") v = v.replace(/\D/g, "");
+    if (widths[code]) v = v.padEnd(widths[code], " ").slice(0, widths[code]);
+    return v;
+  }
+
+  const daq = wire(fields.DAQ).replace(/\D/g, "");
+  if (!/^\d{9}$/.test(daq)) {
+    throw new Error("NY: DAQ debe contener exactamente 9 digitos.");
+  }
+  fields.DAQ = daq;
+
+  const order = [
+    "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC",
+    "DAY", "DAU", "DAG", "DAI", "DAJ", "DAK", "DAQ", "DCF", "DCG", "DDE",
+    "DDF", "DDG", "DDA", "DDB", "DDK", "DDL"
+  ];
+
+  const lines = [];
+  order.forEach((code) => {
+    const raw = wire(fields[code]);
+    if (raw !== "") lines.push(code + nyWire(code, raw));
+  });
+
+  const dlBlock = "DL" + lines.join("\n") + "\n\r";
+  const length = String(dlBlock.length).padStart(4, "0");
+  const header = "@\n\x1e\rANSI 636001100401DL0031" + length;
+  return header + dlBlock;
+}
+
 function buildTestPayload(body) {
   const profile = clean(body.profile).toUpperCase();
   if (!/^[A-Z]{2}$/.test(profile)) throw new Error("profile debe ser un código de 2 letras.");
@@ -155,11 +196,14 @@ module.exports = async (req, res) => {
     const ohio = profile === "OH";
     const alaska = profile === "AK";
     const california = profile === "CA";
+    const newyork = profile === "NY";
     const raw = ohio
       ? buildOhioV10Payload(body)
       : (alaska
         ? buildAlaskaV10Payload(body)
-        : (california ? buildCaliforniaV10Payload(body) : buildTestPayload(body)));
+        : (california
+          ? buildCaliforniaV10Payload(body)
+          : (newyork ? buildNewYorkV10Payload(body) : buildTestPayload(body))));
 
     const source = await bwipjs.toBuffer({
       bcid: "pdf417",
@@ -209,7 +253,7 @@ module.exports = async (req, res) => {
     res.statusCode = 200;
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : (alaska ? "AK_AAMVA_V10_2020" : (california ? "CA_AAMVA_V10" : "KAIREN_TEST_V3")));
+    res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : (alaska ? "AK_AAMVA_V10_2020" : (california ? "CA_AAMVA_V10" : (newyork ? "NY_AAMVA_V10" : "KAIREN_TEST_V3"))));
     res.setHeader("X-Kairen-Size", alaska ? "1078x319-TIGHT" : "900x300");
     if (ohio) {
       res.setHeader("X-Kairen-IIN", "636023");
@@ -222,6 +266,11 @@ module.exports = async (req, res) => {
     if (california) {
       res.setHeader("X-Kairen-IIN", "636014");
       res.setHeader("X-Kairen-AAMVA-Version", "10");
+    }
+    if (newyork) {
+      res.setHeader("X-Kairen-IIN", "636001");
+      res.setHeader("X-Kairen-AAMVA-Version", "10");
+      res.setHeader("X-Kairen-Jurisdiction-Version", "04");
     }
     return res.end(png);
   } catch (err) {

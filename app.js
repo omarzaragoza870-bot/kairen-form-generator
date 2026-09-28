@@ -69,10 +69,18 @@ let lastBlob = null;
 let autoPreviewTimer = null;
 let previewRequestId = 0;
 
-function allFields(){ const p=activeProfile(); return SECTIONS.flatMap(s=>s.fields.filter(f=>!f.akOnly || p.id==="AK")); }
-
+const NY_HIDDEN_CODES = new Set(["DCU","DAH","DAW","DAZ","DCK","DDD"]);
 
 function activeProfile(){ return profiles[$("profile").value] || profiles.CO; }
+
+function isFieldVisibleForProfile(f){
+  const p=activeProfile();
+  if(f.akOnly && p.id!=="AK") return false;
+  if(p.id==="NY" && NY_HIDDEN_CODES.has(f.code)) return false;
+  return true;
+}
+
+function allFields(){ return SECTIONS.flatMap(s=>s.fields.filter(isFieldVisibleForProfile)); }
 
 function fieldForProfile(f){
   const p = activeProfile();
@@ -85,12 +93,18 @@ function fieldForProfile(f){
   if(p.id === "CA" && f.code === "DCA"){
     return Object.assign({}, f, {quick:["C class","AA class","A class","B class","M motorcycle","NONE"]});
   }
+  if(p.id === "NY" && f.code === "DCA"){
+    return Object.assign({}, f, {quick:["D regular","A CDL combo","B CDL heavy","M motorcycle","NONE"]});
+  }
+  if(p.id === "NY" && ["DDA","DDB","DDK","DDL"].includes(f.code)){
+    return Object.assign({}, f, {required:true});
+  }
   return f;
 }
 
 function sectionForProfile(section){
   const p=activeProfile();
-  const fields=section.fields.filter(f=>!f.akOnly || p.id==="AK").map(fieldForProfile);
+  const fields=section.fields.filter(isFieldVisibleForProfile).map(fieldForProfile);
   return Object.assign({}, section, {fields});
 }
 
@@ -352,11 +366,45 @@ function buildCaliforniaPayloadFromFields(fields){
   return header+dlBlock;
 }
 
+function buildNewYorkPayloadFromFields(fields){
+  const f=Object.assign({},fields);
+  ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
+  f.DAU=normalizeOhioHeight(f.DAU);
+  f.DAJ="NY";
+
+  // Primer ejemplo NY proporcionado por el usuario: estos campos viajan
+  // con anchuras fijas. Con los valores del preset, el subarchivo DL mide
+  // exactamente 0331 bytes, reproduciendo el encabezado ANSI recibido.
+  const widths={DCA:4,DCB:10,DCS:25,DAC:25,DAD:25,DAG:25,DAI:20,DAK:11};
+  function nyWire(code,value){
+    let v=cleanWire(value);
+    if(code==="DAK") v=v.replace(/\D/g,"");
+    if(widths[code]) v=v.padEnd(widths[code]," ").slice(0,widths[code]);
+    return v;
+  }
+
+  const daq=cleanWire(f.DAQ).replace(/\D/g,"");
+  if(!/^\d{9}$/.test(daq)) throw new Error("NY: DAQ debe contener exactamente 9 digitos.");
+  f.DAQ=daq;
+
+  const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DDE","DDF","DDG","DDA","DDB","DDK","DDL"];
+  const lines=[];
+  order.forEach(code=>{
+    const raw=cleanWire(f[code]);
+    if(raw!=="") lines.push(code+nyWire(code,raw));
+  });
+  const dlBlock="DL"+lines.join("\n")+"\n\r";
+  const length=String(dlBlock.length).padStart(4,"0");
+  const header="@\n\x1e\rANSI 636001100401DL0031"+length;
+  return header+dlBlock;
+}
+
 function buildRawPayload(){
   const c=collect();
   if(c.profile==="OH") return buildOhioPayloadFromFields(c.fields);
   if(c.profile==="AK") return buildAlaskaPayloadFromFields(c.fields);
   if(c.profile==="CA") return buildCaliforniaPayloadFromFields(c.fields);
+  if(c.profile==="NY") return buildNewYorkPayloadFromFields(c.fields);
   const pairs=[
     `MODE=${c.mode}`,
     `PROFILE=${c.profile}`,
@@ -589,6 +637,16 @@ function autofill(){
       DDA:"F",DDB:"03192023",DDK:"0",DDL:"0",DDD:"",
       DCA:"AA",DCB:"NONE",DCD:"NONE"
     };
+  } else if(profile === "NY"){
+    // Reproduce el PRIMER ejemplo NY suministrado por el usuario.
+    values={
+      DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",
+      DAG:"123 SAMPLE ST",DAI:"SAN FRANCISCO",DAJ:"NY",DAK:"94110",
+      DAY:"BRO",DAU:"067 IN",
+      DBA:"01012029",DBD:"01012024",DAQ:"463923920",DCF:"SAMPLEDD12345",DCG:"USA",
+      DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",
+      DCA:"D",DCB:"NONE",DCD:"NONE"
+    };
   } else if(profile === "AZ"){
     values={
       DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
@@ -636,7 +694,7 @@ function nextRequired(){
 function collect(){
   syncAllTruncation();
   const profile=$("profile").value;
-  const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":(profile==="CA"?"CA_AAMVA_V10":"KAIREN_TEST_V3"));
+  const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":(profile==="CA"?"CA_AAMVA_V10":(profile==="NY"?"NY_AAMVA_V10":"KAIREN_TEST_V3")));
   const out={profile,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode,fields:{}};
   allFields().forEach(f=>{ if(!f.akOnly) out.fields[f.code]=String(values[f.code]??f.default??""); });
   return out;
