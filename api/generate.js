@@ -121,6 +121,49 @@ function buildCaliforniaV10Payload(body) {
   return header + dlBlock;
 }
 
+function buildIndianaV09Payload(body) {
+  const fields = Object.assign({}, body.fields || {});
+  ["DBA", "DBD", "DBB", "DDB"].forEach((k) => { fields[k] = normalizeDate(fields[k]); });
+  fields.DAU = normalizeHeight(fields.DAU);
+  fields.DAJ = "IN";
+  fields.DAK = wire(fields.DAK).replace(/\D/g, "").padEnd(11, " ").slice(0, 11);
+
+  const daq = wire(fields.DAQ).replace(/\D/g, "");
+  if (!/^\d{10}$/.test(daq)) {
+    throw new Error("IN: DAQ/DLN debe contener exactamente 10 digitos (visual ####-##-####).");
+  }
+  fields.DAQ = daq;
+
+  const dcf = wire(fields.DCF).replace(/\D/g, "");
+  if (!/^\d{14}$/.test(dcf)) {
+    throw new Error("IN: DCF/DD debe contener exactamente 14 digitos.");
+  }
+  fields.DCF = dcf;
+
+  const dck = wire(fields.DCK).replace(/\D/g, "");
+  if (!/^\d{16}$/.test(dck)) {
+    throw new Error("IN: DCK/INVENTORY debe contener exactamente 16 digitos.");
+  }
+  fields.DCK = dck;
+
+  const order = [
+    "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC",
+    "DAY", "DAU", "DAG", "DAI", "DAJ", "DAK", "DAQ", "DCF", "DCG", "DCK",
+    "DDE", "DDF", "DDG", "DAW", "DAZ", "DDA", "DDB", "DDK", "DDL"
+  ];
+
+  const lines = [];
+  order.forEach((code) => {
+    const value = code === "DAK" ? fields[code] : wire(fields[code]);
+    if (value !== "") lines.push(code + value);
+  });
+
+  const dlBlock = "DL" + lines.join("\n") + "\n\r";
+  const length = String(dlBlock.length).padStart(4, "0");
+  const header = "@\n\x1e\rANSI 636037090001DL0031" + length;
+  return header + dlBlock;
+}
+
 function buildNewYorkV10Payload(body) {
   const fields = Object.assign({}, body.fields || {});
   ["DBA", "DBD", "DBB", "DDB"].forEach((k) => { fields[k] = normalizeDate(fields[k]); });
@@ -197,13 +240,16 @@ module.exports = async (req, res) => {
     const alaska = profile === "AK";
     const california = profile === "CA";
     const newyork = profile === "NY";
+    const indiana = profile === "IN";
     const raw = ohio
       ? buildOhioV10Payload(body)
       : (alaska
         ? buildAlaskaV10Payload(body)
         : (california
           ? buildCaliforniaV10Payload(body)
-          : (newyork ? buildNewYorkV10Payload(body) : buildTestPayload(body))));
+          : (newyork
+            ? buildNewYorkV10Payload(body)
+            : (indiana ? buildIndianaV09Payload(body) : buildTestPayload(body)))));
 
     const source = await bwipjs.toBuffer({
       bcid: "pdf417",
@@ -253,7 +299,7 @@ module.exports = async (req, res) => {
     res.statusCode = 200;
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : (alaska ? "AK_AAMVA_V10_2020" : (california ? "CA_AAMVA_V10" : (newyork ? "NY_AAMVA_V10" : "KAIREN_TEST_V3"))));
+    res.setHeader("X-Kairen-Mode", ohio ? "OH_AAMVA_V10_2020" : (alaska ? "AK_AAMVA_V10_2020" : (california ? "CA_AAMVA_V10" : (newyork ? "NY_AAMVA_V10" : (indiana ? "IN_AAMVA_V09" : "KAIREN_TEST_V3")))));
     res.setHeader("X-Kairen-Size", alaska ? "1078x319-TIGHT" : "900x300");
     if (ohio) {
       res.setHeader("X-Kairen-IIN", "636023");
@@ -271,6 +317,11 @@ module.exports = async (req, res) => {
       res.setHeader("X-Kairen-IIN", "636001");
       res.setHeader("X-Kairen-AAMVA-Version", "10");
       res.setHeader("X-Kairen-Jurisdiction-Version", "04");
+    }
+    if (indiana) {
+      res.setHeader("X-Kairen-IIN", "636037");
+      res.setHeader("X-Kairen-AAMVA-Version", "09");
+      res.setHeader("X-Kairen-Jurisdiction-Version", "00");
     }
     return res.end(png);
   } catch (err) {

@@ -96,7 +96,13 @@ function fieldForProfile(f){
   if(p.id === "NY" && f.code === "DCA"){
     return Object.assign({}, f, {quick:["D regular","A CDL combo","B CDL heavy","M motorcycle","NONE"]});
   }
+  if(p.id === "IN" && f.code === "DCA"){
+    return Object.assign({}, f, {quick:["D regular","A CDL combo","B CDL heavy","M motorcycle","NONE"]});
+  }
   if(p.id === "NY" && ["DDA","DDB","DDK","DDL"].includes(f.code)){
+    return Object.assign({}, f, {required:true});
+  }
+  if(p.id === "IN" && ["DAW","DAZ","DCK","DDA","DDB","DDK","DDL"].includes(f.code)){
     return Object.assign({}, f, {required:true});
   }
   return f;
@@ -366,6 +372,37 @@ function buildCaliforniaPayloadFromFields(fields){
   return header+dlBlock;
 }
 
+function buildIndianaPayloadFromFields(fields){
+  const f=Object.assign({},fields);
+  ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
+  f.DAU=normalizeOhioHeight(f.DAU);
+  f.DAJ="IN";
+  f.DAK=cleanWire(f.DAK).replace(/\D/g,"").padEnd(11," ").slice(0,11);
+
+  const daq=cleanWire(f.DAQ).replace(/\D/g,"");
+  if(!/^\d{10}$/.test(daq)) throw new Error("IN: DAQ/DLN debe contener 10 digitos (visual ####-##-####).");
+  f.DAQ=daq;
+
+  const dcf=cleanWire(f.DCF).replace(/\D/g,"");
+  if(!/^\d{14}$/.test(dcf)) throw new Error("IN: DCF/DD debe contener 14 digitos.");
+  f.DCF=dcf;
+
+  const dck=cleanWire(f.DCK).replace(/\D/g,"");
+  if(!/^\d{16}$/.test(dck)) throw new Error("IN: DCK/INVENTORY debe contener 16 digitos.");
+  f.DCK=dck;
+
+  const order=["DCA","DCB","DCD","DBA","DCS","DAC","DAD","DBD","DBB","DBC","DAY","DAU","DAG","DAI","DAJ","DAK","DAQ","DCF","DCG","DCK","DDE","DDF","DDG","DAW","DAZ","DDA","DDB","DDK","DDL"];
+  const lines=[];
+  order.forEach(code=>{
+    const value=(code==="DAK")?f[code]:cleanWire(f[code]);
+    if(value!=="") lines.push(code+value);
+  });
+  const dlBlock="DL"+lines.join("\n")+"\n\r";
+  const length=String(dlBlock.length).padStart(4,"0");
+  const header="@\n\x1e\rANSI 636037090001DL0031"+length;
+  return header+dlBlock;
+}
+
 function buildNewYorkPayloadFromFields(fields){
   const f=Object.assign({},fields);
   ["DBA","DBD","DBB","DDB"].forEach(k=>f[k]=normalizeOhioDate(f[k]));
@@ -405,6 +442,7 @@ function buildRawPayload(){
   if(c.profile==="AK") return buildAlaskaPayloadFromFields(c.fields);
   if(c.profile==="CA") return buildCaliforniaPayloadFromFields(c.fields);
   if(c.profile==="NY") return buildNewYorkPayloadFromFields(c.fields);
+  if(c.profile==="IN") return buildIndianaPayloadFromFields(c.fields);
   const pairs=[
     `MODE=${c.mode}`,
     `PROFILE=${c.profile}`,
@@ -647,6 +685,15 @@ function autofill(){
       DDA:"F",DDB:"01012020",DDK:"0",DDL:"0",
       DCA:"D",DCB:"NONE",DCD:"NONE"
     };
+  } else if(profile === "IN"){
+    values={
+      DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
+      DAG:"123 SAMPLE ST",DAH:"",DAI:"SAN FRANCISCO",DAJ:"IN",DAK:"94110",
+      DAY:"BRO",DAU:"067 IN",DAW:"150",DAZ:"BRO",
+      DBA:"01012029",DBD:"01012024",DAQ:"2351755816",DCF:"04172492300435",DCG:"USA",DCK:"0370157638575029",
+      DDA:"F",DDB:"07242018",DDK:"0",DDL:"0",DDD:"",
+      DCA:"D",DCB:"NONE",DCD:"NONE"
+    };
   } else if(profile === "AZ"){
     values={
       DCS:"DOE",DAC:"JANE",DAD:"Q",DBB:"02151990",DBC:"2",DDE:"N",DDF:"N",DDG:"N",DCU:"",
@@ -694,7 +741,7 @@ function nextRequired(){
 function collect(){
   syncAllTruncation();
   const profile=$("profile").value;
-  const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":(profile==="CA"?"CA_AAMVA_V10":(profile==="NY"?"NY_AAMVA_V10":"KAIREN_TEST_V3")));
+  const mode=profile==="OH"?"OH_AAMVA_V10_2020":(profile==="AK"?"AK_AAMVA_V10_2020":(profile==="CA"?"CA_AAMVA_V10":(profile==="NY"?"NY_AAMVA_V10":(profile==="IN"?"IN_AAMVA_V09":"KAIREN_TEST_V3"))));
   const out={profile,version:$("version").value,subfile:$("subfile").value,strict:$("strict").checked,mode,fields:{}};
   allFields().forEach(f=>{ if(!f.akOnly) out.fields[f.code]=String(values[f.code]??f.default??""); });
   return out;

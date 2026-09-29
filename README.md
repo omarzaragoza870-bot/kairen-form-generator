@@ -90,3 +90,12 @@ Salida PDF417: PNG 900x300.
 ## NY v0.8.2
 - Nuevo endpoint dedicado `/api/barcode-ny` para CODE128 de New York desde CODIGO INFERIOR (16 digitos).
 - No cambia `/api/barcode` usado por otros perfiles.
+
+## Indiana (IN) - v0.9.0
+- Perfil PDF417 Indiana basado en la muestra suministrada: IIN `636037`, AAMVA V09, Jurisdiction Version `00`, 1 subarchivo `DL`.
+- DLN / `DAQ`: 10 digitos; visual en Photoshop `####-##-####`.
+- DD / `DCF`: 14 digitos.
+- INVENTORY / `DCK`: 16 digitos.
+- Revision visual del formulario: `Rev. 2018.07.24 (0900)`; `DDB=07242018` en PDF417.
+- El CODE128 de Indiana sale de INVENTORY (`DCK`) mediante `POST /api/barcode-in`.
+- EXP se calcula en el JSX: mes/dia de DOB menos 1 dia y anio `ISS + 6`.

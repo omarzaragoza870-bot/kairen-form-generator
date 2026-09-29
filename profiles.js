@@ -13,7 +13,7 @@ window.KAIREN_PROFILES = {
   HI: { id:"HI", name:"Hawaii (HI)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
   ID: { id:"ID", name:"Idaho (ID)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
   IL: { id:"IL", name:"Illinois (IL)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
-  IN: { id:"IN", name:"Indiana (IN)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
+  IN: { id:"IN", name:"Indiana (IN)", ready:true, note:"Indiana configurado con el ejemplo suministrado: IIN 636037, AAMVA V09, Jurisdiction Version 00, un subarchivo DL, DCK como INVENTORY de 16 digitos y CODE128 desde INVENTORY.", version:"09", subfile:"DL", strictDefault:true, dateFormat:"MMDDYYYY", heightFormat:"IN", iin:"636037", jurisdictionVersion:"00", autoTruncation:false },
   IA: { id:"IA", name:"Iowa (IA)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
   KS: { id:"KS", name:"Kansas (KS)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
   KY: { id:"KY", name:"Kentucky (KY)", ready:true, note:"Perfil disponible para payload interno de prueba. No representa codificación oficial de una jurisdicción.", version:"10", subfile:"DL" },
